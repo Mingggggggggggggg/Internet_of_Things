@@ -12,12 +12,12 @@ void setup() {
     Serial.print(".");
   }
 
-  Serial.println("\nVerbunden mit WLAN!");
+
 }
 
 void loop() {
-  if (WiFi.status() == true) {
-    Serial.print("Verbunden");
+  if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nVerbunden mit WLAN!");
   }
   delay(1000);
 }
