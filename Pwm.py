@@ -1,7 +1,7 @@
 ﻿import tkinter as tk
 from gpiozero import PWMLED
 
-led = PWMLED(18)  # GPIO 18 für PWM
+led = PWMLED(12)
 
 def window():
     def update_led(value):
