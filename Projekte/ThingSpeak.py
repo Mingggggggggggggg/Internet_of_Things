@@ -1,22 +1,23 @@
-﻿import adafruit_dht
+﻿import time
 import board
-import time
+import adafruit_dht
 
-# DHT22-Sensor an GPIO4 (board.D4)
-dht_device = adafruit_dht.DHT22(board.D4)
-
-# Kurze Pause, damit der Sensor bereit ist
-time.sleep(2)
+# DHT22 an GPIO17 (Pin 11)
+dht_device = adafruit_dht.DHT11(board.D4)
 
 try:
-    temperature = dht_device.temperature
-    humidity = dht_device.humidity
+    while True:
+        try:
+            temperature = dht_device.temperature
+            humidity = dht_device.humidity
+            print(f"Temp: {temperature:.1f}�C  Luftfeuchte: {humidity:.1f}%")
+        except RuntimeError as e:
+            # DHT22 liefert gelegentlich Lesefehler ? ignorieren und neu versuchen
+            print(f"Lesefehler: {e.args[0]}")
+        time.sleep(2)
 
-    print(f"Temperatur: {temperature:.1f} C")
-    print(f"Luftfeuchtigkeit: {humidity:.1f}%")
-
-except RuntimeError as error:
-    print(f"Fehler beim Auslesen: {error}")
+except KeyboardInterrupt:
+    print("Messung beendet.")
 
 finally:
-    dht_device.exit()  
+    dht_device.exit()
