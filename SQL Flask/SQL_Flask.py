@@ -22,6 +22,6 @@ if __name__ == "__main__":
     measureThread.start()
 
     try:
-        app.run(host='localhost', port=8181, debug=False)
+        app.run(host='localhost', port=8181, debug=False) #Flaskdebug modus aus, sonst doppelte messungen Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads Ich hasse Threads 
     except KeyboardInterrupt:
         GPIO.cleanup()

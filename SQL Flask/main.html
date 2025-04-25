@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>DHT22 Messdaten</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        svg {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>DHT22 Messwerte</h1>
+    <div id="chart"></div>
+
+    <script>
+        // Daten aus Flask: readings = [(id, temp, hum, date, time), ...]
+        const data = {{ readings|tojson }};
+        
+        // Umformen in besser lesbares Format
+        const formatted = data.map(d => ({
+            datetime: new Date(d[3] + "T" + d[4]),
+            temperature: d[1],
+            humidity: d[2]
+        }));
+
+        const width = 800, height = 400, margin = { top: 20, right: 30, bottom: 30, left: 40 };
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const x = d3.scaleTime()
+            .domain(d3.extent(formatted, d => d.datetime))
+            .range([margin.left, width - margin.right]);
+
+        const yTemp = d3.scaleLinear()
+            .domain([d3.min(formatted, d => d.temperature) - 1, d3.max(formatted, d => d.temperature) + 1])
+            .range([height - margin.bottom, margin.top]);
+
+        const yHum = d3.scaleLinear()
+            .domain([d3.min(formatted, d => d.humidity) - 5, d3.max(formatted, d => d.humidity) + 5])
+            .range([height - margin.bottom, margin.top]);
+
+        const lineTemp = d3.line()
+            .x(d => x(d.datetime))
+            .y(d => yTemp(d.temperature));
+
+        const lineHum = d3.line()
+            .x(d => x(d.datetime))
+            .y(d => yHum(d.humidity));
+
+        // Temperaturlinie
+        svg.append("path")
+            .datum(formatted)
+            .attr("fill", "none")
+            .attr("stroke", "tomato")
+            .attr("stroke-width", 2)
+            .attr("d", lineTemp);
+
+        // Luftfeuchtigkeitslinie
+        svg.append("path")
+            .datum(formatted)
+            .attr("fill", "none")
+            .attr("stroke", "royalblue")
+            .attr("stroke-width", 2)
+            .attr("d", lineHum);
+
+        // Achsen
+        const xAxis = d3.axisBottom(x).ticks(5);
+        const yAxisLeft = d3.axisLeft(yTemp);
+        const yAxisRight = d3.axisRight(yHum);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+            .call(xAxis);
+
+        svg.append("g")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(yAxisLeft);
+
+        svg.append("g")
+            .attr("transform", `translate(${width - margin.right},0)`)
+            .call(yAxisRight);
+
+        // Legende
+        svg.append("text")
+            .attr("x", margin.left)
+            .attr("y", margin.top - 5)
+            .attr("fill", "tomato")
+            .text("Temperatur (°C)");
+
+        svg.append("text")
+            .attr("x", width - margin.right - 100)
+            .attr("y", margin.top - 5)
+            .attr("fill", "royalblue")
+            .text("Luftfeuchtigkeit (%)");
+    </script>
+</body>
+</html>
