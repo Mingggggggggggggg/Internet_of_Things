@@ -14,6 +14,7 @@ def measure():
         currentdate = now.strftime("%Y-%m-%d")
         currenttime = now.strftime("%H:%M:%S")
 
+        print(now)
         print(f"Temperatur: {temperature} °C, Feuchtigkeit: {humidity} %, Datum: {currentdate}, Zeit: {currenttime}")
 
         saveToDB(temperature, humidity, currentdate, currenttime)

@@ -22,6 +22,6 @@ if __name__ == "__main__":
     measureThread.start()
 
     try:
-        app.run(host='localhost', port=8181, debug=True)
+        app.run(host='localhost', port=8181, debug=False)
     except KeyboardInterrupt:
         GPIO.cleanup()
