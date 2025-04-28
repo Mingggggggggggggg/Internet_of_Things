@@ -1,1 +1,4 @@
-﻿SELECT * FROM dhtreadings;
+﻿
+-- DELETE FROM dhtreadings 
+VACUUM
+-- SELECT * FROM dhtreadings;
