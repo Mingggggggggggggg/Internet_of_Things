@@ -16,8 +16,8 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 AsyncWebServer server(80);
-const char* ssid = "WIFI_SSID";
-const char* password = "PASS";
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASS;
 
 
 String readDHTTemperature() {
