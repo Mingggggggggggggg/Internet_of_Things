@@ -8,7 +8,7 @@ import os
 MQTT_PUB_TEMP = "/esp32/dht22/temperature"
 MQTT_PUB_HUM = "/esp32/dht22/humidity"
 MQTT_PUB_READINGS = "/esp32/dht22/readings"
-SQLITE_DB_PATH = "./Documents/12_14_MQTT/sensordata.db"
+SQLITE_DB_PATH = "./sensordata.db"
 
 app = flask.Flask(__name__)
 def dict_factory(cursor, row):
@@ -27,15 +27,18 @@ def on_message(client, userdata, message):
     print("MQTT message received")
     if message.topic == MQTT_PUB_READINGS:
         print("DHT readings update")
+        
     dhtreadings_json = json.loads(message.payload)
     print(dhtreadings_json['temperature'])
     print(dhtreadings_json['humidity'])
+
     conn=connect_with(SQLITE_DB_PATH)
     c=conn.cursor()
     c.execute("""INSERT INTO dhtreadings (temperature,
         humidity, currentdate, currenttime, device) VALUES((?), (?), date('now'),
         time('now'), (?))""", (dhtreadings_json['temperature'],
         dhtreadings_json['humidity'], 'esp32') )
+
     conn.commit()
     conn.close()
 
