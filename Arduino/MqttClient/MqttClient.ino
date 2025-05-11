@@ -16,6 +16,8 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
+const char* mqtt_login = MQTT_USERNAME;
+const char* mqtt_password = MQTT_PASSWORD;
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
 
@@ -90,7 +92,7 @@ void setup() {
   mqttClient.onPublish(onMqttPublish);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   // Falls der MQTT-Broker Authentifizierung erzwingt:
-  // mqttClient.setCredentials("YOUR_USER", "YOUR_PASSWORD");
+  mqttClient.setCredentials(mqtt_login, mqtt_password);
   connectToWifi();
 }
 
