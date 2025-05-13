@@ -16,8 +16,8 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
-const char* mqtt_login = MQTT_USERNAME;
-const char* mqtt_password = MQTT_PASSWORD;
+//const char* mqtt_login = MQTT_USERNAME;
+//const char* mqtt_password = MQTT_PASSWORD;
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
 
@@ -45,13 +45,13 @@ void connectToMqtt() {
 void onWiFiEvent(WiFiEvent_t event) {
   Serial.printf("[WiFi-event] event: %d\n", event);
   switch (event) {
-    case IP_EVENT_STA_GOT_IP:
+    case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("WiFi connected");
       Serial.println("IP address: ");
       Serial.println(WiFi.localIP());
       connectToMqtt();
       break;
-    case WIFI_EVENT_STA_DISCONNECTED:
+    case SYSTEM_EVENT_STA_DISCONNECTED:
       Serial.println("WiFi lost connection");
       xTimerStop(mqttReconnectTimer, 0);  // Nicht gleichzeitig mit MQTT und WiFi wiederverbinden
       xTimerStart(wifiReconnectTimer, 0);
@@ -92,7 +92,7 @@ void setup() {
   mqttClient.onPublish(onMqttPublish);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   // Falls der MQTT-Broker Authentifizierung erzwingt:
-  mqttClient.setCredentials(mqtt_login, mqtt_password);
+  //mqttClient.setCredentials(mqtt_login, mqtt_password);
   connectToWifi();
 }
 
@@ -123,7 +123,7 @@ void loop() {
   dhtReadings.toCharArray(data, (dhtReadings.length() + 1));
   uint16_t packetIdPub3 = mqttClient.publish(MQTT_PUB_READINGS, 1, true, String(data).c_str());
   Serial.printf("Publishing on topic %s at QoS 1, packetId %i: ", MQTT_PUB_READINGS, packetIdPub3);
-  
+
   Serial.printf("Message: %.2f \n", data);
   digitalWrite(LED_PIN, HIGH);
   delay(1000);
