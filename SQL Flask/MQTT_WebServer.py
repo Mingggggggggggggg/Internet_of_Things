@@ -11,6 +11,7 @@ MQTT_PUB_READINGS = "/esp32/dht22/readings"
 SQLITE_DB_PATH = "./sensordata.db"
 
 app = flask.Flask(__name__)
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -23,6 +24,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(MQTT_PUB_TEMP)
     client.subscribe(MQTT_PUB_HUM)
 
+# TODO TRY CATCH BLOCK um die Fehlerhaften bztw üngültige Daten des DHT22 auszusortieren.
 def on_message(client, userdata, message):
     print("MQTT message received")
     if message.topic == MQTT_PUB_READINGS:
@@ -93,6 +95,7 @@ if __name__ == "__main__":
         mqttc.on_message = on_message
         mqttc.connect("localhost",1883,60)
         mqttc.loop_start()
-        app.run(host='0.0.0.0', port=8181, debug=True)
+        #mqttc.loop_forever()
+        app.run(host='0.0.0.0', port=8181, debug=False)
     except KeyboardInterrupt:
         pass
