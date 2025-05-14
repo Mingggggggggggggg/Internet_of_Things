@@ -14,8 +14,6 @@ extern "C" {
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASS;
 //const char* mqtt_login = MQTT_USERNAME;
 //const char* mqtt_password = MQTT_PASSWORD;
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
@@ -34,7 +32,7 @@ char data[80];
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
 }
 
 void connectToMqtt() {
@@ -45,13 +43,13 @@ void connectToMqtt() {
 void onWiFiEvent(WiFiEvent_t event) {
   Serial.printf("[WiFi-event] event: %d\n", event);
   switch (event) {
-    case SYSTEM_EVENT_STA_GOT_IP:
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       Serial.println("WiFi connected");
       Serial.println("IP address: ");
       Serial.println(WiFi.localIP());
       connectToMqtt();
       break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
       Serial.println("WiFi lost connection");
       xTimerStop(mqttReconnectTimer, 0);  // Nicht gleichzeitig mit MQTT und WiFi wiederverbinden
       xTimerStart(wifiReconnectTimer, 0);
