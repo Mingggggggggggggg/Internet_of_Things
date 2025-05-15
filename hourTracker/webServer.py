@@ -1,5 +1,4 @@
-﻿
-import sqlite3
+﻿import sqlite3
 import flask
 import json
 import sys
