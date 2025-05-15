@@ -6,11 +6,14 @@ import csv
 filepath = "./dataset.db"
 csvPath = "/home/admin/Desktop/Internet_of_Things/hourTracker/Datensatz/Lost Ark Shamewall bereinigt - Tabellenblatt1.csv"
 
+
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
 
 
 def readCsv(con, csvPath):
