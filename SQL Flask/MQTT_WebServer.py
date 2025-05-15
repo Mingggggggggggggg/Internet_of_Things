@@ -26,23 +26,26 @@ def on_connect(client, userdata, flags, rc):
 
 # TODO TRY CATCH BLOCK um die Fehlerhaften bztw üngültige Daten des DHT22 auszusortieren.
 def on_message(client, userdata, message):
-    print("MQTT message received")
-    if message.topic == MQTT_PUB_READINGS:
-        print("DHT readings update")
+    try: 
+        print("MQTT message received")
+        if message.topic == MQTT_PUB_READINGS:
+            print("DHT readings update")
         
-    dhtreadings_json = json.loads(message.payload)
-    print(dhtreadings_json['temperature'])
-    print(dhtreadings_json['humidity'])
+        dhtreadings_json = json.loads(message.payload)
+        print(dhtreadings_json['temperature'])
+        print(dhtreadings_json['humidity'])
 
-    conn=connect_with(SQLITE_DB_PATH)
-    c=conn.cursor()
-    c.execute("""INSERT INTO dhtreadings (temperature,
-        humidity, currentdate, currenttime, device) VALUES((?), (?), date('now'),
-        time('now'), (?))""", (dhtreadings_json['temperature'],
-        dhtreadings_json['humidity'], 'esp32') )
+        conn=connect_with(SQLITE_DB_PATH)
+        c=conn.cursor()
+        c.execute("""INSERT INTO dhtreadings (temperature,
+            humidity, currentdate, currenttime, device) VALUES((?), (?), date('now'),
+            time('now'), (?))""", (dhtreadings_json['temperature'],
+            dhtreadings_json['humidity'], 'esp32') )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f" Error: {str(e)}")
 
 def connect_with(filepath):
     con = None
@@ -88,7 +91,7 @@ def main():
     return flask.render_template('main1.html', readings=readings)
 
 if __name__ == "__main__":
-    print('KY-015 Sensor - Temperatur und Luftfeuchtigkeit')
+    print('DHT22 Sensor - Temperatur und Luftfeuchtigkeit')
     try:
         mqttc=mqtt.Client()
         mqttc.on_connect = on_connect
