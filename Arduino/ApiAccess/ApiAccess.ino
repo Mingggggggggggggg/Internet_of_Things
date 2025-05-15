@@ -72,7 +72,7 @@ void getHours() {
     Serial.println("⚠️ Keine WiFi/MQTT-Verbindung!");
     return;
   }
-
+// https://developer.valvesoftware.com/wiki/Steam_Web_API#GetRecentlyPlayedGames_(v0001)
   HTTPClient http;
   String url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/";
   url += "?key=" + String(STEAM_API_KEY);
