@@ -42,14 +42,7 @@ def initDB():
 
     con = sqlite3.connect(filepath)
     con.row_factory = dict_factory
-
-    with con:
-        if os.path.exists(filepath):
-            os.remove(filepath)
-
-    con = sqlite3.connect(filepath)
-    con.row_factory = dict_factory
-
+    
     with con:
         cur = con.cursor()
         cur.execute("""

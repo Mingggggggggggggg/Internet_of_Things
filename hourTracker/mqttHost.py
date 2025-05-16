@@ -1,50 +1,36 @@
 ﻿import paho.mqtt.client as mqtt
 import json
+import sqlite3
 import DbManager as dbm
 
 MQTT_PUB_HOURS = "/esp32/Lost_Ark/hours"
-SQLITE_DB_PATH = "dataset.db"
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(MQTT_PUB_HOURS)
 
-def connectDB():
-    con = dbm.initDB()
-    
-    pass
-
-def read_from_database():
-    con = connect_with(SQLITE_DB_PATH)
-    with con:
-        cursor = con.cursor()
-        cursor.execute("""
-        SELECT * FROM dhtreadings
-        ORDER BY id DESC LIMIT 20
-        """)
-        readings = cursor.fetchall()
-        print(readings)
-        return readings
-    return None
-
-
 def on_message(client, userdata, message):
-    try: 
+    try:
         print("MQTT message received")
         if message.topic == MQTT_PUB_HOURS:
-            print("DHT readings update")
-        
-        dbm.insert()
+            payload = json.loads(message.payload.decode())
+            datum = payload["datum"]
+            stunden = float(payload["stunden"])
+
+            con = sqlite3.connect(dbm.FILEPATH)
+            dbm.insert(con, datum, stunden)
+            con.close()
+            print(f"Eingefügt: {datum} – {stunden}h")
     except Exception as e:
-        print(f" Error: {str(e)}")
+        print(f"Fehler beim Verarbeiten der Nachricht: {str(e)}")
 
 if __name__ == "__main__":
-    print('DHT22 Sensor - Temperatur und Luftfeuchtigkeit')
+    print("Starte MQTT Client...")
     try:
-        mqttc=mqtt.Client()
+        mqttc = mqtt.Client()
         mqttc.on_connect = on_connect
         mqttc.on_message = on_message
-        mqttc.connect("localhost",1883,60)
-        mqttc.loop_start()
+        mqttc.connect("localhost", 1883, 60)
+        mqttc.loop_forever()
     except KeyboardInterrupt:
-        pass
+        print("Beendet durch Benutzer.")
