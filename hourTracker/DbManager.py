@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 import os
 from datetime import datetime
 import csv
@@ -7,7 +7,7 @@ filepath = "./dataset.db"
 csvPath = "/home/admin/Desktop/Internet_of_Things/hourTracker/Datensatz/Lost Ark Shamewall bereinigt - Tabellenblatt1.csv"
 
 
-
+# Übernommen aus Laborübung 12
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -15,7 +15,7 @@ def dict_factory(cursor, row):
     return d
 
 
-
+# Lese und bereinige originalen Datensatz und füge in Datenbank ein
 def readCsv(con, csvPath):
     with open(csvPath, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=',')
@@ -32,7 +32,9 @@ def readCsv(con, csvPath):
 
                 except Exception as e:
                     print(f" Fehler in Zeile: {row} ; {str(e)}")
-                    
+
+# Übernommen aus Laborübung 12 connect:with()   
+# Stelle eine Verbindung zur Datenbank her, existiert keine Datenbank, wird diese erstellt und gefüllt               
 def initDB():
     if not os.path.exists(filepath):
         con = sqlite3.connect(filepath)
@@ -57,6 +59,8 @@ def initDB():
         con.row_factory = dict_factory
     return con
 
+# Erstellt eine temporäre Tabelle, damit nur die aktuellsten Stunden pro Tag in der Datenbank sind (Datum ist primary key)
+# "Idee" und erstellt von DeepSeek
 def tempTable(con):
     with con:
         cur = con.cursor()
@@ -81,8 +85,28 @@ def tempTable(con):
         END;
         """)
 
+# Methode zum Einfügen von Daten in die Datenbank
 def insert(con, datum, stunden):
-    tempTable(con)  
     with con:
         cur = con.cursor()
         cur.execute("INSERT INTO _pending (datum, stunden) VALUES (?, ?)", (datum, stunden))
+
+# Methode zum abrufen der absoluten Stunden für den Webserver
+def getAllData():
+    con = sqlite3.connect(filepath)
+    con.row_factory = dict_factory
+    cur = con.cursor()
+    cur.execute("SELECT datum, stunden FROM lostarkshamewall ORDER BY datum ASC")
+    data = cur.fetchall()
+    con.close()
+    return data
+
+# Methide zum abrufen der relativen Studnen für den Webserver
+def getRelativeData():
+    con = sqlite3.connect(filepath)
+    con.row_factory = dict_factory
+    cur = con.cursor()
+    cur.execute("SELECT datum, relativeStunden FROM lostarkshamewall ORDER BY datum ASC")
+    data = cur.fetchall()
+    con.close()
+    return data

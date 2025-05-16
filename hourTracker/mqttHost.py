@@ -1,15 +1,19 @@
-﻿import datetime
+import datetime
 import paho.mqtt.client as mqtt
 import json
 import sqlite3
-import DbManager as dbm
+import DbManager as dm
 
 MQTT_PUB_HOURS = "/esp32/Lost_Ark/hours"
 
+# Übernommen aus Laborübung 12
+# Bei Verbindungsaufbau abonniere Lost Ark hours vom ESP
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(MQTT_PUB_HOURS)
 
+# Übernommen aus Laborübung 12
+# Bei Ankunft der Nachricht bereinige die Json und und schicke an den DbManager zum einfügen
 def on_message(client, userdata, message):
     try:
         raw_payload = message.payload.decode().strip()
@@ -25,11 +29,12 @@ def on_message(client, userdata, message):
                 stunden = float(raw_payload.replace(",", "."))
                 stunden = round(stunden, 1)
                 datum = datetime.datetime.now().strftime("%Y-%m-%d")
-                print("Fallback")
+                print("Verwende Datetime; ungütliges Datum in Payload")
             
 
-            con = sqlite3.connect(dbm.filepath)
-            dbm.insert(con, datum, stunden)
+            con = sqlite3.connect(dm.filepath)
+            dm.tempTable(con)  
+            dm.insert(con, datum, stunden)
             con.close()
             print(f"Eingefügt: {datum} ; {stunden}h")
             
@@ -37,7 +42,7 @@ def on_message(client, userdata, message):
         print(f"Fehler: {str(e)}")
 
 
-
+# Übernommen aus Laborübung 12
 def startMqttClient():
     try:
         mqttc = mqtt.Client()

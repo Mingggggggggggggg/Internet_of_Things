@@ -1,19 +1,16 @@
-﻿import DbManager as dbm
+import DbManager as dm
 import mqttHost as mH
 import webServer as wS
-import sqlite3
+import threading
 
 def main():
+    #Zum aktualisieren des Datensatzes folgende Zeile auskommentieren
+    #con = dm.initDB()
 
-    con = dbm.initDB()
-    #Datensatz aktualisieren
-    #dbm.readCsv(con, dbm.csvPath)
-    #con.close()
-    
-    #Starte MQTT Client
-    mH.startMqttClient()
+    mqtt_thread = threading.Thread(target=mH.startMqttClient, daemon=True)
+    mqtt_thread.start()
 
-    #Starte Webserver
-    wS.readFromDatabase(con)
+    wS.startServer() 
+
 if __name__ == "__main__":
     main()

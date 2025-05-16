@@ -1,0 +1,262 @@
+﻿<!-- Komplett von ChatGPT und DeepSeek ich habe hier nichts selbst gemacht, bis auf ein paar sehr kleine Anpassungen-->
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Lost Ark Shamewall</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .left-panel,
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .left-panel {
+            flex: 2;
+        }
+
+        .right-panel {
+            flex: 1;
+        }
+
+        svg {
+            border: 1px solid #ccc;
+            background: #fafafa;
+        }
+
+        .axis path,
+        .axis line {
+            stroke: #888;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 6px 12px;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 13px;
+            color: #333;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Linke Spalte: Zoom-Charts -->
+        <div class="left-panel">
+            <div>
+                <h3>Relative Stunden pro Tag </h3>
+                <svg id="zoomRelative" width="800" height="500"></svg>
+            </div>
+            <div>
+                <h3>Absolute Stunden pro Tag </h3>
+                <svg id="zoomAbsolute" width="800" height="500"></svg>
+            </div>
+        </div>
+
+        <!-- Rechte Spalte: Balkendiagramm Wochentag -->
+        <div class="right-panel">
+            <h3>Verteilung relative Stunden nach Wochentag</h3>
+            <svg id="weekdayBar" width="500" height="500"></svg>
+        </div>
+        <div style="margin-top: 30px;">
+            <h3>Letzte 14 Tage</h3>
+            <table id="last14days" border="1" cellpadding="4" cellspacing="0"
+                style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Rel. Stunden</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Tooltip-DIV (einmal für alle Charts)
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+        // --- Funktion für Zoom-Chart (wiederverwendbar) ---
+        function createZoomChart(svgId, url, valueKey, ignoreFirst, color, label) {
+            const svg = d3.select(svgId),
+                margin = { top: 20, right: 20, bottom: 50, left: 60 },
+                width = +svg.attr("width") - margin.left - margin.right,
+                height = +svg.attr("height") - margin.top - margin.bottom;
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            const xAxisG = g.append("g").attr("transform", `translate(0,${height})`).attr("class", "axis");
+            const yAxisG = g.append("g").attr("class", "axis");
+            const path = g.append("path")
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 2);
+
+            let x = d3.scaleTime().range([0, width]);
+            let y = d3.scaleLinear().range([height, 0]);
+            const line = d3.line()
+                .x(d => x(d.datum))
+                .y(d => y(d[valueKey]));
+
+            function zoomed(event) {
+                const zx = event.transform.rescaleX(x);
+                xAxisG.call(d3.axisBottom(zx));
+                path.attr("d", line.x(d => zx(d.datum)));
+            }
+            svg.call(d3.zoom()
+                .scaleExtent([1, 10])
+                .translateExtent([[0, 0], [width, height]])
+                .extent([[0, 0], [width, height]])
+                .on("zoom", zoomed)
+            );
+
+            d3.json(url).then(raw => {
+                let data = ignoreFirst ? raw.slice(1) : raw;
+                data.forEach(d => {
+                    d.datum = new Date(d.datum);
+                    d[valueKey] = +d[valueKey];
+                });
+                x.domain(d3.extent(data, d => d.datum));
+                y.domain([0, d3.max(data, d => d[valueKey])]);
+                xAxisG.call(d3.axisBottom(x));
+                yAxisG.call(d3.axisLeft(y));
+                path.datum(data).attr("d", line);
+
+                // interaktives Hover-Overlay
+                g.append("rect")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .style("fill", "none")
+                    .style("pointer-events", "all")
+                    .on("mousemove", (event) => {
+                        const [mx] = d3.pointer(event), x0 = x.invert(mx);
+                        const bisect = d3.bisector(d => d.datum).left;
+                        const i = bisect(data, x0, 1);
+                        const d0 = data[i - 1], d1 = data[i];
+                        const d = (!d1 || (x0 - d0.datum < d1.datum - x0)) ? d0 : d1;
+                        tooltip
+                            .style("opacity", 1)
+                            .html(`${label}<br>${d.datum.toLocaleDateString()}<br>${d[valueKey].toFixed(2)}`)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", () => tooltip.style("opacity", 0));
+            });
+        }
+
+        // Zwei Zoom-Charts initialisieren
+        createZoomChart(
+            "#zoomRelative",
+            "/data/relative",
+            "relativeStunden",
+            true,
+            "steelblue",
+            "Relative Std."
+        );
+        createZoomChart(
+            "#zoomAbsolute",
+            "/data/absolute",
+            "stunden",
+            false,
+            "tomato",
+            "Absolute Std."
+        );
+
+        // --- Balkendiagramm Wochentag ---
+        (function () {
+            const svg = d3.select("#weekdayBar"),
+                margin = { top: 20, right: 20, bottom: 50, left: 40 },
+                width = +svg.attr("width") - margin.left - margin.right,
+                height = +svg.attr("height") - margin.top - margin.bottom;
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            const weekdays = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+            d3.json("/data/relative").then(raw => {
+                const data = raw.slice(1).map(d => {
+                    d.datum = new Date(d.datum);
+                    d.relativeStunden = +d.relativeStunden;
+                    return d;
+                });
+
+                // Gruppieren und Summieren pro Wochentag
+                const sums = d3.rollups(
+                    data,
+                    v => d3.sum(v, d => d.relativeStunden),
+                    d => (d.datum.getDay() + 6) % 7
+                );
+                // In Array mit Wochentagsnamen und Summe
+                const barData = weekdays.map((day, i) => ({
+                    tag: day,
+                    sum: (sums.find(d => d[0] === i)?.[1]) || 0
+                }));
+
+                const x = d3.scaleBand()
+                    .domain(weekdays)
+                    .range([0, width])
+                    .padding(0.2);
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(barData, d => d.sum)])
+                    .nice()
+                    .range([height, 0]);
+
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x));
+                g.append("g")
+                    .call(d3.axisLeft(y));
+
+                g.selectAll(".bar")
+                    .data(barData)
+                    .enter().append("rect")
+                    .attr("class", "bar")
+                    .attr("x", d => x(d.tag))
+                    .attr("y", d => y(d.sum))
+                    .attr("width", x.bandwidth())
+                    .attr("height", d => height - y(d.sum))
+                    .attr("fill", "darkorange")
+                    .on("mousemove", (event, d) => {
+                        tooltip
+                            .style("opacity", 1)
+                            .html(`Wochentag: ${d.tag}<br>Summe: ${d.sum.toFixed(2)}`)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", () => tooltip.style("opacity", 0));
+            });
+            d3.json("/data/relative").then(raw => {
+                const data = raw.slice(1)  // 1. Eintrag ignorieren
+                    .map(d => ({
+                        datum: new Date(d.datum),
+                        relativeStunden: +d.relativeStunden
+                    }))
+                    .sort((a, b) => b.datum - a.datum) // absteigend nach Datum
+
+                const last14 = data.slice(0, 14);
+                const tbody = d3.select("#last14days tbody");
+                tbody.selectAll("tr").data(last14).join("tr")
+                    .html(d => `<td>${d.datum.toLocaleDateString()}</td><td>${d.relativeStunden.toFixed(2)}</td>`);
+            });
+        })();
+    </script>
+</body>
+
+</html>

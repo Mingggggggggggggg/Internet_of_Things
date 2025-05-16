@@ -15,16 +15,17 @@ extern "C" {
 #define MQTT_PUB_HOURS "/esp32/Lost_Ark/hours"
 #define LOST_ARK_APPID 1599340
 
-// Timer-Handler
+
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
+AsyncMqttClient mqttClient;
 
 // Internet Uhr
 WiFiUDP ntpUDP;
+// Passe an auf GMT+1
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
 
-// MQTT-Client
-AsyncMqttClient mqttClient;
+
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -81,6 +82,7 @@ String getCurrentDate() {
   sprintf(dateBuffer, "%04d-%02d-%02d", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday);
   return String(dateBuffer);
 }
+// Mögliches Zukunftprojekt, um alle zuletzt gespielten Spiele dynamisch zu tracken
 // https://developer.valvesoftware.com/wiki/Steam_Web_API#GetRecentlyPlayedGames_(v0001)
 void getHours() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
