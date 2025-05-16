@@ -1,6 +1,7 @@
-import DbManager as dm
-import mqttHost as mH
-import webServer as wS
+import datetime
+import pDbManager as dm
+import pMqttHost as mH
+import pWebServer as wS
 import threading
 
 def main():
@@ -13,4 +14,7 @@ def main():
     wS.startServer() 
 
 if __name__ == "__main__":
-    main()
+    #main()
+
+    time = datetime.time()
+    print(time)
