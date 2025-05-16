@@ -12,8 +12,7 @@ extern "C" {
 
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
-#define MQTT_PUB_HOURS "/esp32/Lost_Ark/hours"
-#define LOST_ARK_APPID 1599340
+#define MQTT_PUB_HOURS "/esp32/performanceTester"
 
 
 TimerHandle_t mqttReconnectTimer;
@@ -94,7 +93,10 @@ void generateData() {
   }
 
   DynamicJsonDocument doc(128);
-  doc[""]
+  doc["datum"] = getCurrentDate();
+  doc["timestamp"] = 
+  doc["qos"] = 
+  doc["message"] = 
 
 }
 
@@ -120,7 +122,7 @@ void setup() {
 
 void loop() {
   static unsigned long lastUpdate = 0;
-  const unsigned long interval = 300000; // 5 Minuten (Steam API Ratelimit)
+  const unsigned long interval = 1000; // 5 Minuten (Steam API Ratelimit)
 
   if (millis() - lastUpdate >= interval) {
     getHours();
