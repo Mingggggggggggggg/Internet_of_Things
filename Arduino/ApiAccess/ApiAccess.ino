@@ -8,6 +8,7 @@ extern "C" {
 #include <AsyncMqttClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <NTPClient.h>
 
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
@@ -17,6 +18,10 @@ extern "C" {
 // Timer-Handler
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
+
+// Internet Uhr
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
 
 // MQTT-Client
 AsyncMqttClient mqttClient;
@@ -67,12 +72,22 @@ void onMqttPublish(uint16_t packetId) {
   Serial.println(packetId);
 }
 
+String getCurrentDate() {
+  timeClient.update();
+  time_t epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime(&epochTime);
+  
+  char dateBuffer[11];
+  sprintf(dateBuffer, "%04d-%02d-%02d", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday);
+  return String(dateBuffer);
+}
+// https://developer.valvesoftware.com/wiki/Steam_Web_API#GetRecentlyPlayedGames_(v0001)
 void getHours() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     Serial.println("Keine WiFi/MQTT-Verbindung!");
     return;
   }
-// https://developer.valvesoftware.com/wiki/Steam_Web_API#GetRecentlyPlayedGames_(v0001)
+
   HTTPClient http;
   String url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/";
   url += "?key=" + String(STEAM_API_KEY);
@@ -101,12 +116,21 @@ void getHours() {
         if (game["appid"] == LOST_ARK_APPID) {
           int playtimeMinutes = game["playtime_forever"];
           float playtimeHours = playtimeMinutes / 60.0f;
+          String currentDate = getCurrentDate(); 
 
-          char mqttPayload[20];
-          snprintf(mqttPayload, sizeof(mqttPayload), "%.1f", playtimeHours);
-          mqttClient.publish(MQTT_PUB_HOURS, 1, true, mqttPayload);
+          // JSON-Objekt erstellen
+          DynamicJsonDocument mqttDoc(128);
+          mqttDoc["datum"] = currentDate;
+          mqttDoc["stunden"] = playtimeHours;
 
-          Serial.printf("Lost Ark Spielstunden: %.1f h\n", playtimeHours);
+          // JSON als String serialisieren
+          String mqttPayload;
+          serializeJson(mqttDoc, mqttPayload);
+
+          // MQTT-Nachricht senden
+          mqttClient.publish(MQTT_PUB_HOURS, 1, true, mqttPayload.c_str());
+
+          Serial.printf("Lost Ark Spielstunden: %.1f h (Datum: %s)\n", playtimeHours, currentDate.c_str());
           break;
         }
       }
@@ -135,6 +159,8 @@ void setup() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
   connectToWifi();
+
+  timeClient.begin();
 }
 
 void loop() {
