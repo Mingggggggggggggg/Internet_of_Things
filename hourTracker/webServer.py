@@ -9,6 +9,19 @@ SQLITE_DB_PATH = "./sensordata.db"
 
 app = flask.Flask(__name__)
 
+def readFromDatabase(con):
+    with con:
+        cursor = con.cursor()
+        cursor.execute("""
+        SELECT * FROM dhtreadings
+        ORDER BY id DESC LIMIT 20
+        """)
+        readings = cursor.fetchall()
+        print(readings)
+        return readings
+    return None
+
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):

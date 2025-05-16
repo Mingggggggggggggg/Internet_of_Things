@@ -1,4 +1,5 @@
-﻿import paho.mqtt.client as mqtt
+﻿import datetime
+import paho.mqtt.client as mqtt
 import json
 import sqlite3
 import DbManager as dbm
@@ -11,29 +12,39 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, message):
     try:
-        print("MQTT message received")
+        raw_payload = message.payload.decode().strip()
+        print(f"Topic: {message.topic}, Payload: {raw_payload}")
+        
         if message.topic == MQTT_PUB_HOURS:
-            payload = json.loads(message.payload.decode())
-
-            datum = payload["datum"]
-            stunden_str = str(payload["stunden"]).replace(",", ".").strip()
-            stunden = float(stunden_str)
-
+            try:
+                payload = json.loads(raw_payload)
+                stunden = float(str(payload["stunden"]).replace(",", "."))
+                stunden = round(stunden, 1)
+                datum = payload["datum"]
+            except json.JSONDecodeError:
+                stunden = float(raw_payload.replace(",", "."))
+                stunden = round(stunden, 1)
+                datum = datetime.datetime.now().strftime("%Y-%m-%d")
+                print("Fallback")
+            
 
             con = sqlite3.connect(dbm.filepath)
             dbm.insert(con, datum, stunden)
             con.close()
-            print(f"Eingefügt: {datum} – {stunden}h")
+            print(f"Eingefügt: {datum} ; {stunden}h")
+            
     except Exception as e:
-        print(f"Fehler beim Verarbeiten der Nachricht: {str(e)}")
+        print(f"Fehler: {str(e)}")
 
-if __name__ == "__main__":
-    print("Starte MQTT Client...")
+
+
+def startMqttClient():
     try:
         mqttc = mqtt.Client()
         mqttc.on_connect = on_connect
         mqttc.on_message = on_message
         mqttc.connect("localhost", 1883, 60)
         mqttc.loop_forever()
+        print("Client gestartet")
     except KeyboardInterrupt:
         print("Beendet durch Benutzer.")

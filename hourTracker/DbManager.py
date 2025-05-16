@@ -52,14 +52,18 @@ def initDB():
             relativeStunden NUMERIC
         )
         """)
-        cur.execute("CREATE TEMP TABLE _pending (datum DATE, stunden NUMERIC)")
+        tempTable(con)
+    return con
 
+def tempTable(con):
+    with con:
+        cur = con.cursor()
+        cur.execute("CREATE TEMP TABLE IF NOT EXISTS _pending (datum DATE, stunden NUMERIC)")
         cur.execute("""
-        CREATE TRIGGER tr_insert_lostarkshamewall
+        CREATE TRIGGER IF NOT EXISTS tr_insert_lostarkshamewall
         AFTER INSERT ON _pending
         BEGIN
             DELETE FROM lostarkshamewall WHERE datum = NEW.datum;
-
             INSERT INTO lostarkshamewall (datum, stunden, relativeStunden)
             VALUES (
                 NEW.datum,
@@ -74,12 +78,9 @@ def initDB():
             );
         END;
         """)
-    return con
 
 def insert(con, datum, stunden):
-
-    #stunden = stunden.replace('"', '').replace(',', '.').strip()
-    #stunden = float(stunden)
+    tempTable(con)  
     with con:
         cur = con.cursor()
         cur.execute("INSERT INTO _pending (datum, stunden) VALUES (?, ?)", (datum, stunden))
