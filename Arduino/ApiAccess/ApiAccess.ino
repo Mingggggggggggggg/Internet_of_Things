@@ -69,7 +69,7 @@ void onMqttPublish(uint16_t packetId) {
 
 void getHours() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
-    Serial.println("⚠️ Keine WiFi/MQTT-Verbindung!");
+    Serial.println("Keine WiFi/MQTT-Verbindung!");
     return;
   }
 // https://developer.valvesoftware.com/wiki/Steam_Web_API#GetRecentlyPlayedGames_(v0001)
