@@ -22,7 +22,6 @@ def readCsv(con, csvPath):
         with con:
             for row in reader:
                 try:
-
                     raw_datum = row["Datum"].strip()
                     datum = datetime.strptime(raw_datum, "%d.%m.%y").date().isoformat()
                         
@@ -33,26 +32,29 @@ def readCsv(con, csvPath):
 
                 except Exception as e:
                     print(f" Fehler in Zeile: {row} ; {str(e)}")
-
-
-
+                    
 def initDB():
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
-    con = sqlite3.connect(filepath)
-    con.row_factory = dict_factory
-    
-    with con:
-        cur = con.cursor()
-        cur.execute("""
-        CREATE TABLE lostarkshamewall (
-            datum DATE PRIMARY KEY,
-            stunden NUMERIC,
-            relativeStunden NUMERIC
-        )
-        """)
-        tempTable(con)
+    if not os.path.exists(filepath):
+        con = sqlite3.connect(filepath)
+        con.row_factory = dict_factory
+        with con:
+            cur = con.cursor()
+            cur.execute("""
+            DROP TABLE IF EXISTS lostarkshamewall
+            """)
+            cur.execute("""
+            CREATE TABLE lostarkshamewall (
+                datum DATE PRIMARY KEY,
+                stunden NUMERIC,
+                relativeStunden NUMERIC
+            )
+            """)
+            con.commit()
+            tempTable(con)
+            readCsv(con, csvPath)
+    else:
+        con = sqlite3.connect(filepath)
+        con.row_factory = dict_factory
     return con
 
 def tempTable(con):
