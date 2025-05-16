@@ -83,13 +83,18 @@ String getCurrentDate() {
   return String(dateBuffer);
 }
 
+void syncClock() {
+
+}
 
 void generateData() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     Serial.println("Keine WiFi/MQTT-Verbindung!");
     break;
   }
-  Dynamic
+
+  DynamicJsonDocument doc(128);
+  doc[""]
 
 }
 
