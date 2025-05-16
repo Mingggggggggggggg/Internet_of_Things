@@ -14,10 +14,13 @@ def on_message(client, userdata, message):
         print("MQTT message received")
         if message.topic == MQTT_PUB_HOURS:
             payload = json.loads(message.payload.decode())
-            datum = payload["datum"]
-            stunden = float(payload["stunden"])
 
-            con = sqlite3.connect(dbm.FILEPATH)
+            datum = payload["datum"]
+            stunden_str = str(payload["stunden"]).replace(",", ".").strip()
+            stunden = float(stunden_str)
+
+
+            con = sqlite3.connect(dbm.filepath)
             dbm.insert(con, datum, stunden)
             con.close()
             print(f"Eingefügt: {datum} – {stunden}h")

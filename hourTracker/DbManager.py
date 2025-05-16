@@ -77,6 +77,9 @@ def initDB():
     return con
 
 def insert(con, datum, stunden):
+
+    #stunden = stunden.replace('"', '').replace(',', '.').strip()
+    #stunden = float(stunden)
     with con:
         cur = con.cursor()
         cur.execute("INSERT INTO _pending (datum, stunden) VALUES (?, ?)", (datum, stunden))
