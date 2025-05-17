@@ -24,7 +24,7 @@ WiFiUDP ntpUDP;
 // Passe an auf GMT+1
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
 
-
+#define char qualityOfService = 0;
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -94,9 +94,9 @@ void generateData() {
 
   DynamicJsonDocument doc(128);
   doc["datum"] = getCurrentDate();
-  doc["timestamp"] = 
-  doc["qos"] = 
-  doc["message"] = 
+  doc["timestamp"] = millis();
+  doc["qos"] = qualityOfService;
+  doc["message"] = NULL;
 
 }
 

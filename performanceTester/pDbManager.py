@@ -21,10 +21,10 @@ def initDB():
         with con:
             cur = con.cursor()
             cur.execute("""
-            DROP TABLE IF EXISTS performanceTable
+            DROP TABLE IF EXISTS performanceTableLatency
             """)
             cur.execute("""
-            CREATE TABLE performanceTable (
+            CREATE TABLE performanceTableLatency (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 datum DATE,
                 timestamp BIGINT,
@@ -44,14 +44,14 @@ def initDB():
 def insert(con, datum, timestamp, qos, latency, message):
     with con:
         cur = con.cursor()
-        cur.execute("INSERT INTO performanceTable (datum, timestamp, qos, latency, message) VALUES (?, ?, ?, ?)", (datum, timestamp, qos, latency, message))
+        cur.execute("INSERT INTO performanceTableLatency (datum, timestamp, qos, latency, message) VALUES (?, ?, ?, ?)", (datum, timestamp, qos, latency, message))
 
 
 def getAllData():
     con = sqlite3.connect(filepath)
     con.row_factory = dict_factory
     cur = con.cursor()
-    cur.execute("SELECT datum, timestamp, qos, latency, message FROM performanceTable ORDER BY datum ASC")
+    cur.execute("SELECT datum, timestamp, qos, latency, message FROM performanceTableLatency ORDER BY datum ASC")
     data = cur.fetchall()
     con.close()
     return data
@@ -61,7 +61,7 @@ def getRelativeData():
     con = sqlite3.connect(filepath)
     con.row_factory = dict_factory
     cur = con.cursor()
-    cur.execute("SELECT datum, relativeStunden FROM performanceTable ORDER BY datum ASC")
+    cur.execute("SELECT datum, relativeStunden FROM performanceTableLatency ORDER BY datum ASC")
     data = cur.fetchall()
     con.close()
     return data
