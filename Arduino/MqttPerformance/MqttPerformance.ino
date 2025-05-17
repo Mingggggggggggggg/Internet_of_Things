@@ -70,36 +70,17 @@ void onMqttPublish(uint16_t packetId) {
 
 
 
-void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, 
-  size_t len, size_t index, size_t total) {
-if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return;
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
+                   size_t len, size_t index, size_t total) {
+  if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return;
 
-// QoS-Ebene der empfangenen Nachricht auslesen
-uint8_t receivedQos = properties.qos;
+  // Sicherstellen, dass payload als String genutzt wird:
+  std::string msg(payload, len);
+  Serial.printf("Empfangenes Ping: %s\n", msg.c_str());
 
-// Sicherstellen, dass payload als String genutzt wird:
-std::string msg(payload, len);
-Serial.printf("Empfangenes Ping (QoS %d): %s\n", receivedQos, msg.c_str());
-
-// JSON parsen um Timestamp zu aktualisieren
-DynamicJsonDocument doc(256);
-DeserializationError error = deserializeJson(doc, payload);
-if (error) {
-Serial.print("JSON Deserialization failed: ");
-Serial.println(error.c_str());
-return;
-}
-
-// Aktuellen Timestamp setzen
-doc["timestamp"] = millis();
-
-// JSON serialisieren
-std::string response;
-serializeJson(doc, response);
-
-// Echo zurückschicken mit der gleichen QoS-Ebene
-mqttClient.publish(MQTT_SUB_LATMESSAGE, receivedQos, false, response.c_str(), response.length());
-Serial.printf("Echo zurückgeschickt mit QoS %d\n", receivedQos);
+  // Echo zurückschicken mit korrekter Länge
+  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, msg.c_str(), msg.length());
+  Serial.println("Echo zurückgeschickt");
 }
 
 

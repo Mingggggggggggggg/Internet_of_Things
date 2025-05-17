@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Performance Tester</title>
+    <title>MQTT Performance</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -34,28 +34,49 @@
             border-bottom: 1px solid #eee;
             padding-bottom: 10px;
         }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        .legend-dash {
+            display: inline-block;
+            width: 12px;
+            height: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
+            background: repeating-linear-gradient(to right, currentColor, currentColor 3px, transparent 3px, transparent 6px);
+        }
     </style>
 </head>
 <body>
-    <h1>MQTT Latenz Analyse</h1>
+    <h1>MQTT Latenz 10Hz 0 kb Data</h1>
     <div id="loading" class="loading">Lade Daten...</div>
     <div id="error" class="error" style="display:none;"></div>
     
     <h2>Round-Trip Latenz</h2>
+    <div id="roundtripLegend" class="legend"></div>
     <div class="chart-container">
         <canvas id="roundtripChart"></canvas>
     </div>
     
-    <h2>One-Way Latenz (geschätzt)</h2>
+    <h2>One-Way Latenz </h2>
+    <div id="onewayLegend" class="legend"></div>
     <div class="chart-container">
         <canvas id="onewayChart"></canvas>
     </div>
 
     <script>
         const qosColors = {
-            0: { main: 'rgba(54, 162, 235, 1)', avg: 'rgba(54, 162, 235, 0.5)' },
-            1: { main: 'rgba(255, 99, 132, 1)', avg: 'rgba(255, 99, 132, 0.5)' },
-            2: { main: 'rgba(75, 192, 192, 1)', avg: 'rgba(75, 192, 192, 0.5)' }
+            0: { main: 'rgba(54, 162, 235, 1)', avg: 'rgba(54, 162, 235, 0.8)' },
+            1: { main: 'rgba(255, 99, 132, 1)', avg: 'rgba(255, 99, 132, 0.8)' },
+            2: { main: 'rgba(75, 192, 192, 1)', avg: 'rgba(75, 192, 192, 0.8)' }
         };
 
         async function fetchData() {
@@ -78,38 +99,69 @@
                 const values = qosData.map(item => isOneWay ? item.latency / 2 : item.latency);
                 const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
                 
-                return [
-                    {
-                        label: `QoS ${qos} ${isOneWay ? 'One-Way' : 'Round-Trip'}`,
-                        data: qosData.map(item => ({ 
-                            x: item.id, 
-                            y: isOneWay ? item.latency / 2 : item.latency 
-                        })),
-                        borderColor: qosColors[qos].main,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.1
-                    },
-                    {
-                        label: `Durchschnitt (${avg.toFixed(1)}ms)`,
-                        data: qosData.map(item => ({ 
-                            x: item.id, 
-                            y: avg 
-                        })),
-                        borderColor: qosColors[qos].avg,
-                        borderWidth: 1,
-                        borderDash: [5, 5],
-                        pointRadius: 0
-                    }
-                ];
-            }).flat();
+                return {
+                    qos: qos,
+                    datasets: [
+                        {
+                            label: `QoS ${qos} ${isOneWay ? 'One-Way' : 'Round-Trip'}`,
+                            data: qosData.map(item => ({ 
+                                x: item.id, 
+                                y: isOneWay ? item.latency / 2 : item.latency 
+                            })),
+                            borderColor: qosColors[qos].main,
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.1
+                        },
+                        {
+                            label: `Ø QoS ${qos} (${avg.toFixed(1)}ms)`,
+                            data: qosData.map(item => ({ 
+                                x: item.id, 
+                                y: avg 
+                            })),
+                            borderColor: qosColors[qos].avg,
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ],
+                    average: avg
+                };
+            });
         }
 
-        function createChart(ctx, data, title) {
+        function createLegend(containerId, chartData, isOneWay = false) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            chartData.forEach(item => {
+                // Hauptlinie
+                const mainItem = document.createElement('div');
+                mainItem.className = 'legend-item';
+                mainItem.innerHTML = `
+                    <span class="legend-color" style="background:${qosColors[item.qos].main}"></span>
+                    QoS ${item.qos} ${isOneWay ? 'One-Way' : 'Round-Trip'}
+                `;
+                container.appendChild(mainItem);
+                
+                // Durchschnittslinie
+                const avgItem = document.createElement('div');
+                avgItem.className = 'legend-item';
+                avgItem.innerHTML = `
+                    <span class="legend-dash" style="color:${qosColors[item.qos].avg}"></span>
+                    Ø QoS ${item.qos} (${item.average.toFixed(1)}ms)
+                `;
+                container.appendChild(avgItem);
+            });
+        }
+
+        function createChart(ctx, chartData) {
+            const allDatasets = chartData.flatMap(item => item.datasets);
+            
             return new Chart(ctx, {
                 type: 'line',
                 data: {
-                    datasets: data
+                    datasets: allDatasets
                 },
                 options: {
                     responsive: true,
@@ -126,7 +178,7 @@
                             type: 'linear',
                             title: { 
                                 display: true, 
-                                text: 'Nachrichten-ID' 
+                                text: 'ID' 
                             }
                         }
                     },
@@ -139,11 +191,7 @@
                             }
                         },
                         legend: {
-                            position: 'top',
-                            labels: {
-                                font: { size: 12 },
-                                filter: item => !item.text.includes('Durchschnitt')
-                            }
+                            display: false // Wir verwenden unsere eigene Legende
                         }
                     }
                 }
@@ -156,14 +204,20 @@
                 document.getElementById('loading').style.display = 'none';
                 
                 // Round-Trip Chart
-                const roundtripCtx = document.getElementById('roundtripChart').getContext('2d');
                 const roundtripData = prepareChartData(data, false);
-                createChart(roundtripCtx, roundtripData, 'Round-Trip Latenz');
+                createLegend('roundtripLegend', roundtripData, false);
+                createChart(
+                    document.getElementById('roundtripChart').getContext('2d'), 
+                    roundtripData
+                );
                 
-                // One-Way Chart (Latenz/2)
-                const onewayCtx = document.getElementById('onewayChart').getContext('2d');
+                // One-Way Chart
                 const onewayData = prepareChartData(data, true);
-                createChart(onewayCtx, onewayData, 'One-Way Latenz');
+                createLegend('onewayLegend', onewayData, true);
+                createChart(
+                    document.getElementById('onewayChart').getContext('2d'), 
+                    onewayData
+                );
                 
             } catch (error) {
                 console.error("Fehler:", error);
