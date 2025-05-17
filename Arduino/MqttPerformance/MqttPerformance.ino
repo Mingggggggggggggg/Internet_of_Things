@@ -6,25 +6,17 @@ extern "C" {
 #include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
-#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
-#define MQTT_PUB_HOURS "/esp32/Lost_Ark/hours"
-#define LOST_ARK_APPID 1599340
 
-
+#define MQTT_PUB_LATRESPONSE "/esp32/latencyResponse"
+#define MQTT_SUB_LATMESSAGE "/esp32/latencyMessage"
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 AsyncMqttClient mqttClient;
-
-// Internet Uhr
-WiFiUDP ntpUDP;
-// Passe an auf GMT+1
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
-
 
 
 void connectToWifi() {
@@ -58,6 +50,7 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
+  mqttClient.subscribe(MQTT_PUB_LATRESPONSE, 0);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -68,57 +61,41 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 void onMqttPublish(uint16_t packetId) {
-  Serial.print("Publish acknowledged.");
-  Serial.print(" packetId: ");
+  Serial.print("Publish acknowledged. packetId: ");
   Serial.println(packetId);
 }
 
-String getCurrentDate() {
-  timeClient.update();
-  time_t epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime(&epochTime);
-  
-  char dateBuffer[11];
-  sprintf(dateBuffer, "%04d-%02d-%02d", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday);
-  return String(dateBuffer);
-}
 
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
+                   size_t len, size_t index, size_t total) {
+  if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return; 
+  Serial.printf("Empfangenes Ping: %s\n", payload);
 
-void generateData() {
-  if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
-    Serial.println("Keine WiFi/MQTT-Verbindung!");
-    break;
-  }
-  Dynamic
-
+  // Payload einfach als Echo zurückschicken
+  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, payload);
+  Serial.println("Echo zurückgeschickt");
 }
 
 void setup() {
   Serial.begin(115200);
-  
+
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000),
-                                  pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+                                    pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000),
-                                  pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-  
+                                    pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
+
   WiFi.onEvent(onWiFiEvent);
-  
+
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
   mqttClient.onPublish(onMqttPublish);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
+  mqttClient.onMessage(onMqttMessage);
+
   connectToWifi();
 
-  timeClient.begin();
 }
 
 void loop() {
-  static unsigned long lastUpdate = 0;
-  const unsigned long interval = 300000; // 5 Minuten (Steam API Ratelimit)
-
-  if (millis() - lastUpdate >= interval) {
-    getHours();
-    lastUpdate = millis();
-  }
 }
