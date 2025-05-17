@@ -90,7 +90,7 @@ String getCurrentDate() {
 }
 
 
-void generateData() {
+void sendData() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     Serial.println("Keine WiFi/MQTT-Verbindung!");
   }
@@ -103,7 +103,7 @@ void generateData() {
   String payload;
   seriarializeJson(doc, payload);
 
-  mqttClient(MQTT_PUB_LATSEND, qualityOfService, )
+  mqttClient.publish(MQTT_PUB_LATSEND, qualityOfService, false)
 
   
 
