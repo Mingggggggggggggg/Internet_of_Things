@@ -6,7 +6,6 @@ extern "C" {
 #include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
-#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 
@@ -14,22 +13,11 @@ extern "C" {
 #define MQTT_PORT 1883
 
 
-#define MQTT_PUB_LATSEND "/esp32/latencySend"
-#define MQTT_SUB_LATREC "/esp32/latencyReceive"
-#define MQTT_PUB_LATRES "/esp32/latencyResult"
-
-uint8_t qualityOfService = 0;
-uint64_t timestampMil = 0;
-
-
+#define MQTT_PUB_LATRESPONSE "/esp32/latencyResponse"
+#define MQTT_SUB_LATMESSAGE "/esp32/latencyMessage"
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 AsyncMqttClient mqttClient;
-
-// Internet Uhr
-WiFiUDP ntpUDP;
-// Passe an auf GMT+1
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
 
 
 
@@ -64,6 +52,7 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
+  mqttClient.subscribe(MQTT_PUB_LATRESPONSE, 0);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -74,76 +63,21 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 void onMqttPublish(uint16_t packetId) {
-  Serial.print("Publish acknowledged.");
-  Serial.print(" packetId: ");
+  Serial.print("Publish acknowledged. packetId: ");
   Serial.println(packetId);
 }
 
-String getCurrentDate() {
-  timeClient.update();
-  time_t epochTime = timeClient.getEpochTime();
-  struct tm* ptm = gmtime(&epochTime);
 
-  char dateBuffer[11];
-  sprintf(dateBuffer, "%04d-%02d-%02d", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday);
-  return String(dateBuffer);
-}
-
-void syncClock() {
-  timeClient.update();
-  Serial.println("NTP-Zeit synchronisiert.");
-}
-
-void sendData() {
-  if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
-    Serial.println("Keine WiFi/MQTT-Verbindung!");
-    return;
-  }
-  timestampMil = esp_timer_get_time();
-
-  DynamicJsonDocument doc(128);
-  doc["datum"] = getCurrentDate();
-  doc["timestamp"] = timestampMil;
-  doc["qos"] = qualityOfService;
-  doc["message"] = "test";
-
-  String payload;
-  serializeJson(doc, payload);
-
-  mqttClient.publish(MQTT_PUB_LATSEND, qualityOfService, false, payload.c_str());
-  Serial.println(timestampMil);
-  Serial.println(qualityOfService);
-  Serial.println("Gesendet");
-}
 
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
                    size_t len, size_t index, size_t total) {
-  if (strcmp(topic, MQTT_SUB_LATREC) != 0) return;  // Korrektes Topic prüfen
+  if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return; 
+  Serial.printf("Empfangenes Ping: %s\n", payload);
 
-  uint64_t now = esp_timer_get_time();
+  // Payload einfach als Echo zurückschicken
+  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, payload);
+  Serial.println("Echo zurückgeschickt");
 
-  DynamicJsonDocument doc(128);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    Serial.print("JSON-Fehler: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  uint64_t sent = doc["timestamp"];
-  uint64_t latency = now - sent;
-
-  DynamicJsonDocument result(128);
-  result["datum"] = getCurrentDate();
-  result["qos"] = qualityOfService;
-  result["latency"] = latency;
-  result["size"] = strlen(payload);
-
-  String resultPayload;
-  serializeJson(result, resultPayload);
-
-  mqttClient.publish(MQTT_PUB_LATRES, 0, false, resultPayload.c_str());  // korrektes Topic
-  Serial.printf("Latenz: %llu µs\n", latency);
 }
 
 
@@ -163,17 +97,14 @@ void setup() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
   mqttClient.onMessage(onMqttMessage);
-  mqttClient.subscribe(MQTT_SUB_LATREC, qualityOfService);
+
 
   connectToWifi();
 
-  timeClient.begin();
-  syncClock();
+
 }
 static unsigned long lastSent = 0;
 void loop() {
-  if (millis() - lastSent > 5000 && mqttClient.connected()) {
-    sendData();
-    lastSent = millis();
-  }
+
 }
+
