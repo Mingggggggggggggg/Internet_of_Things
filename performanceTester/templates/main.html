@@ -2,103 +2,176 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Latenz Visualisierung</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Performance Tester</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        svg {
-            width: 100%;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        .chart-container {
+            width: 90%;
             height: 400px;
+            margin: 30px auto;
         }
-        .chart-title {
+        .loading {
+            text-align: center;
             font-size: 18px;
-            margin: 20px 0 5px;
+            color: #666;
+            margin: 50px;
         }
-        .line {
-            fill: none;
-            stroke-width: 2px;
+        .error {
+            color: red;
+            padding: 10px;
+            background: #ffeeee;
+            border: 1px solid red;
+        }
+        h2 {
+            margin-top: 40px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <h2 class="chart-title">Latenz (Rpi -> ESP -> RPi)</h2>
-    <svg id="latencyChart"></svg>
-
-    <h2 class="chart-title">Latenz (RPi -> ESP)</h2>
-    <svg id="oneWayChart"></svg>
+    <h1>MQTT Latenz Analyse</h1>
+    <div id="loading" class="loading">Lade Daten...</div>
+    <div id="error" class="error" style="display:none;"></div>
+    
+    <h2>Round-Trip Latenz</h2>
+    <div class="chart-container">
+        <canvas id="roundtripChart"></canvas>
+    </div>
+    
+    <h2>One-Way Latenz (geschätzt)</h2>
+    <div class="chart-container">
+        <canvas id="onewayChart"></canvas>
+    </div>
 
     <script>
-        fetch("/data")
-            .then(res => res.json())
-            .then(data => {
-                data.forEach(d => {
-                    d.id = +d.id;
-                    d.qos = +d.qos;
-                    d.latency = +d.latency;
-                    d.oneWayLatency = d.latency / 2;
-                });
+        const qosColors = {
+            0: { main: 'rgba(54, 162, 235, 1)', avg: 'rgba(54, 162, 235, 0.5)' },
+            1: { main: 'rgba(255, 99, 132, 1)', avg: 'rgba(255, 99, 132, 0.5)' },
+            2: { main: 'rgba(75, 192, 192, 1)', avg: 'rgba(75, 192, 192, 0.5)' }
+        };
 
-                const qosGroups = d3.group(data, d => d.qos);
-
-                drawLineChart("#latencyChart", qosGroups, "latency", "Latenz (ms)");
-                drawLineChart("#oneWayChart", qosGroups, "oneWayLatency", "One-Way Latenz (ms)");
-            });
-
-        function drawLineChart(svgId, groups, valueKey, yLabel) {
-            const svg = d3.select(svgId);
-            svg.selectAll("*").remove();
-
-            const margin = {top: 20, right: 30, bottom: 40, left: 60},
-                  width = svg.node().getBoundingClientRect().width - margin.left - margin.right,
-                  height = +svg.attr("height") - margin.top - margin.bottom;
-
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-            const allData = Array.from(groups.values()).flat();
-
-            const x = d3.scaleLinear()
-                .domain(d3.extent(allData, d => d.id))
-                .range([0, width]);
-
-            const y = d3.scaleLinear()
-                .domain([0, d3.max(allData, d => d[valueKey])])
-                .nice()
-                .range([height, 0]);
-
-            const color = d3.scaleOrdinal(d3.schemeCategory10).domain(Array.from(groups.keys()));
-
-            const line = d3.line()
-                .x(d => x(d.id))
-                .y(d => y(d[valueKey]));
-
-            g.append("g")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")));
-
-            g.append("g")
-                .call(d3.axisLeft(y));
-
-            for (const [qos, values] of groups) {
-                g.append("path")
-                    .datum(values)
-                    .attr("class", "line")
-                    .attr("stroke", color(qos))
-                    .attr("d", line);
-
-                g.append("text")
-                    .datum(values[values.length - 1])
-                    .attr("x", d => x(d.id) + 5)
-                    .attr("y", d => y(d[valueKey]))
-                    .style("fill", color(qos))
-                    .style("font-size", "12px")
-                    .text(`QoS ${qos}`);
+        async function fetchData() {
+            try {
+                const response = await fetch('/data');
+                if (!response.ok) throw new Error(`HTTP Fehler! Status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                document.getElementById('error').textContent = `Fehler: ${error.message}`;
+                document.getElementById('error').style.display = 'block';
+                throw error;
             }
-
-            svg.append("text")
-                .attr("x", margin.left)
-                .attr("y", 15)
-                .text(yLabel)
-                .style("font-weight", "bold");
         }
+
+        function prepareChartData(data, isOneWay = false) {
+            const qosLevels = [...new Set(data.map(item => item.qos))].sort();
+            
+            return qosLevels.map(qos => {
+                const qosData = data.filter(item => item.qos === qos);
+                const values = qosData.map(item => isOneWay ? item.latency / 2 : item.latency);
+                const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+                
+                return [
+                    {
+                        label: `QoS ${qos} ${isOneWay ? 'One-Way' : 'Round-Trip'}`,
+                        data: qosData.map(item => ({ 
+                            x: item.id, 
+                            y: isOneWay ? item.latency / 2 : item.latency 
+                        })),
+                        borderColor: qosColors[qos].main,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.1
+                    },
+                    {
+                        label: `Durchschnitt (${avg.toFixed(1)}ms)`,
+                        data: qosData.map(item => ({ 
+                            x: item.id, 
+                            y: avg 
+                        })),
+                        borderColor: qosColors[qos].avg,
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }
+                ];
+            }).flat();
+        }
+
+        function createChart(ctx, data, title) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: data
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { 
+                                display: true, 
+                                text: 'Latenz (ms)' 
+                            }
+                        },
+                        x: {
+                            type: 'linear',
+                            title: { 
+                                display: true, 
+                                text: 'Nachrichten-ID' 
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}ms`;
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: { size: 12 },
+                                filter: item => !item.text.includes('Durchschnitt')
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function initCharts() {
+            try {
+                const data = await fetchData();
+                document.getElementById('loading').style.display = 'none';
+                
+                // Round-Trip Chart
+                const roundtripCtx = document.getElementById('roundtripChart').getContext('2d');
+                const roundtripData = prepareChartData(data, false);
+                createChart(roundtripCtx, roundtripData, 'Round-Trip Latenz');
+                
+                // One-Way Chart (Latenz/2)
+                const onewayCtx = document.getElementById('onewayChart').getContext('2d');
+                const onewayData = prepareChartData(data, true);
+                createChart(onewayCtx, onewayData, 'One-Way Latenz');
+                
+            } catch (error) {
+                console.error("Fehler:", error);
+                document.getElementById('loading').textContent = 'Fehler beim Laden der Daten';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initCharts);
     </script>
 </body>
 </html>
