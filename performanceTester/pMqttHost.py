@@ -14,7 +14,7 @@ MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 totalSend = 100
 qos = 2
 sleep = 1
-messageSizeReal = 1024 #1024 für 1kb
+messageSizeReal = 0 #1024 für 1kb
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
