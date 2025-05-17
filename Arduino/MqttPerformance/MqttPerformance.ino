@@ -104,7 +104,6 @@ void setup() {
 
 
 }
-static unsigned long lastSent = 0;
 void loop() {
 
 }
