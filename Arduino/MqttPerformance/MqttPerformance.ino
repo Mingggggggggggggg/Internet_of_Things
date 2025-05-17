@@ -89,16 +89,6 @@ String getCurrentDate() {
   return String(dateBuffer);
 }
 
-void syncClock() {
-  Serial.print("Synchronisiere Uhr mit NTP");
-  timeClient.update();
-  epochTimeAtSync = timeClient.getEpochTime();
-  millisAtSync = millis();
-  lastNtpSync = millis();
-  Serial.println("Synchronisiert:");
-  Serial.println(epochTimeAtSync);
-  Serial.println(millisAtSync);
-}
 
 void generateData() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
@@ -109,6 +99,9 @@ void generateData() {
   doc["datum"] = getCurrentDate();
   doc["timestamp"] = timestampMil;
   doc["message"] = "test";
+
+  String payload;
+  seriarialize
 
   
 
