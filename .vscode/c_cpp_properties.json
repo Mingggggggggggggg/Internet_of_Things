@@ -3,7 +3,10 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "C:\\Users\\Kumpelbrot\\Documents\\Arduino\\libraries",
+                "C:\\Users\\Kumpelbrot\\Desktop\\Arduino",
+                "C:/Users/Kumpelbrot/Documents/Arduino/libraries/ArduinoJson/extras/tests/Helpers"
             ],
             "defines": [
                 "_DEBUG",

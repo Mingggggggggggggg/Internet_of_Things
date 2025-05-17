@@ -6,6 +6,7 @@ import json
 import sqlite3
 import pDbManager as dm
 
+
 MQTT_PUB_LATRESPONSE = "/esp32/latencyResponse"
 MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 
@@ -19,9 +20,11 @@ def on_connect(client, userdata, flags, rc):
 
 # Angepasst aus https://www.emqx.com/en/blog/how-to-use-mqtt-in-python
 def on_message(client, userdata, message):
+
     try:
-        raw_payload = message.payload.decode().strip()
+        raw_payload = message.payload.decode("utf-8").strip()
         print(f"Topic: {message.topic}, Payload: {raw_payload}")
+
         
         if message.topic == MQTT_SUB_LATMESSAGE:
             try:
@@ -61,6 +64,12 @@ def sendMessage(client):
         count -= 1
 
 
+
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                print(f"Fehler beim Verarbeiten der Nachricht: {e}")
+
+    except Exception as e:
+        print(f"Allg. Fehler: {e}")
 
 def startMqttClient():
     mqttc = mqtt.Client()

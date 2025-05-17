@@ -1,4 +1,4 @@
-﻿#include <Arduino.h>
+#include <Arduino.h>
 #include <WiFi.h>
 #include "../keys.h"
 extern "C" {
@@ -12,11 +12,13 @@ extern "C" {
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
 
+
 #define MQTT_PUB_LATRESPONSE "/esp32/latencyResponse"
 #define MQTT_SUB_LATMESSAGE "/esp32/latencyMessage"
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 AsyncMqttClient mqttClient;
+
 
 
 void connectToWifi() {
@@ -66,6 +68,7 @@ void onMqttPublish(uint16_t packetId) {
 }
 
 
+
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
                    size_t len, size_t index, size_t total) {
   if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return; 
@@ -74,7 +77,9 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   // Payload einfach als Echo zurückschicken
   mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, payload);
   Serial.println("Echo zurückgeschickt");
+
 }
+
 
 void setup() {
   Serial.begin(115200);
@@ -93,9 +98,13 @@ void setup() {
 
   mqttClient.onMessage(onMqttMessage);
 
+
   connectToWifi();
 
+
+}
+static unsigned long lastSent = 0;
+void loop() {
+
 }
 
-void loop() {
-}
