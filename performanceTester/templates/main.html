@@ -1,262 +1,86 @@
-﻿<!-- Komplett von ChatGPT und DeepSeek ich habe hier nichts selbst gemacht, bis auf ein paar sehr kleine Anpassungen-->
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
-
 <head>
-    <meta charset="UTF-8" />
-    <title>Lost Ark Shamewall</title>
+    <meta charset="UTF-8">
+    <title>Latenzvisualisierung</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            display: flex;
-            gap: 20px;
-        }
-
-        .left-panel,
-        .right-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 40px;
-        }
-
-        .left-panel {
-            flex: 2;
-        }
-
-        .right-panel {
-            flex: 1;
-        }
-
-        svg {
-            border: 1px solid #ccc;
-            background: #fafafa;
-        }
-
-        .axis path,
-        .axis line {
-            stroke: #888;
-        }
-
-        .tooltip {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 6px 12px;
-            border: 1px solid #aaa;
-            border-radius: 4px;
-            pointer-events: none;
-            font-size: 13px;
-            color: #333;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
+        body { font-family: Arial, sans-serif; }
+        .chart { margin: 40px; }
+        .line { fill: none; stroke-width: 2px; }
+        .avg-line { stroke: red; stroke-dasharray: 5 5; }
     </style>
 </head>
-
 <body>
-
-    <div class="container">
-        <!-- Linke Spalte: Zoom-Charts -->
-        <div class="left-panel">
-            <div>
-                <h3>Relative Stunden pro Tag </h3>
-                <svg id="zoomRelative" width="800" height="500"></svg>
-            </div>
-            <div>
-                <h3>Absolute Stunden pro Tag </h3>
-                <svg id="zoomAbsolute" width="800" height="500"></svg>
-            </div>
-        </div>
-
-        <!-- Rechte Spalte: Balkendiagramm Wochentag -->
-        <div class="right-panel">
-            <h3>Verteilung relative Stunden nach Wochentag</h3>
-            <svg id="weekdayBar" width="500" height="500"></svg>
-        </div>
-        <div style="margin-top: 30px;">
-            <h3>Letzte 14 Tage</h3>
-            <table id="last14days" border="1" cellpadding="4" cellspacing="0"
-                style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th>Datum</th>
-                        <th>Rel. Stunden</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+    <h1>Latenzvisualisierung</h1>
+    <div id="full-rtt" class="chart">
+        <h2>Round-Trip Time (RTT)</h2>
+        <svg width="900" height="400"></svg>
+    </div>
+    <div id="one-way" class="chart">
+        <h2>One-Way Latenz (RTT / 2)</h2>
+        <svg width="900" height="400"></svg>
     </div>
 
     <script>
-        // Tooltip-DIV (einmal für alle Charts)
-        const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+        const colors = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // --- Funktion für Zoom-Chart (wiederverwendbar) ---
-        function createZoomChart(svgId, url, valueKey, ignoreFirst, color, label) {
-            const svg = d3.select(svgId),
-                margin = { top: 20, right: 20, bottom: 50, left: 60 },
-                width = +svg.attr("width") - margin.left - margin.right,
-                height = +svg.attr("height") - margin.top - margin.bottom;
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            const xAxisG = g.append("g").attr("transform", `translate(0,${height})`).attr("class", "axis");
-            const yAxisG = g.append("g").attr("class", "axis");
-            const path = g.append("path")
-                .attr("fill", "none")
-                .attr("stroke", color)
-                .attr("stroke-width", 2);
+        d3.json("/api/latency").then(data => {
+            const grouped = d3.group(data, d => d.qos);
 
-            let x = d3.scaleTime().range([0, width]);
-            let y = d3.scaleLinear().range([height, 0]);
-            const line = d3.line()
-                .x(d => x(d.datum))
-                .y(d => y(d[valueKey]));
+            // Funktion zum Zeichnen der Diagramme
+            function drawChart(containerId, dataTransform) {
+                const svg = d3.select(`#${containerId} svg`);
+                const margin = {top: 20, right: 30, bottom: 50, left: 60};
+                const width = +svg.attr("width") - margin.left - margin.right;
+                const height = +svg.attr("height") - margin.top - margin.bottom;
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-            function zoomed(event) {
-                const zx = event.transform.rescaleX(x);
-                xAxisG.call(d3.axisBottom(zx));
-                path.attr("d", line.x(d => zx(d.datum)));
-            }
-            svg.call(d3.zoom()
-                .scaleExtent([1, 10])
-                .translateExtent([[0, 0], [width, height]])
-                .extent([[0, 0], [width, height]])
-                .on("zoom", zoomed)
-            );
+                const x = d3.scaleLinear().range([0, width]);
+                const y = d3.scaleLinear().range([height, 0]);
 
-            d3.json(url).then(raw => {
-                let data = ignoreFirst ? raw.slice(1) : raw;
-                data.forEach(d => {
-                    d.datum = new Date(d.datum);
-                    d[valueKey] = +d[valueKey];
-                });
-                x.domain(d3.extent(data, d => d.datum));
-                y.domain([0, d3.max(data, d => d[valueKey])]);
-                xAxisG.call(d3.axisBottom(x));
-                yAxisG.call(d3.axisLeft(y));
-                path.datum(data).attr("d", line);
-
-                // interaktives Hover-Overlay
-                g.append("rect")
-                    .attr("width", width)
-                    .attr("height", height)
-                    .style("fill", "none")
-                    .style("pointer-events", "all")
-                    .on("mousemove", (event) => {
-                        const [mx] = d3.pointer(event), x0 = x.invert(mx);
-                        const bisect = d3.bisector(d => d.datum).left;
-                        const i = bisect(data, x0, 1);
-                        const d0 = data[i - 1], d1 = data[i];
-                        const d = (!d1 || (x0 - d0.datum < d1.datum - x0)) ? d0 : d1;
-                        tooltip
-                            .style("opacity", 1)
-                            .html(`${label}<br>${d.datum.toLocaleDateString()}<br>${d[valueKey].toFixed(2)}`)
-                            .style("left", (event.pageX + 10) + "px")
-                            .style("top", (event.pageY - 30) + "px");
-                    })
-                    .on("mouseout", () => tooltip.style("opacity", 0));
-            });
-        }
-
-        // Zwei Zoom-Charts initialisieren
-        createZoomChart(
-            "#zoomRelative",
-            "/data/relative",
-            "relativeStunden",
-            true,
-            "steelblue",
-            "Relative Std."
-        );
-        createZoomChart(
-            "#zoomAbsolute",
-            "/data/absolute",
-            "stunden",
-            false,
-            "tomato",
-            "Absolute Std."
-        );
-
-        // --- Balkendiagramm Wochentag ---
-        (function () {
-            const svg = d3.select("#weekdayBar"),
-                margin = { top: 20, right: 20, bottom: 50, left: 40 },
-                width = +svg.attr("width") - margin.left - margin.right,
-                height = +svg.attr("height") - margin.top - margin.bottom;
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            const weekdays = ["Mo","Di","Mi","Do","Fr","Sa","So"];
-            d3.json("/data/relative").then(raw => {
-                const data = raw.slice(1).map(d => {
-                    d.datum = new Date(d.datum);
-                    d.relativeStunden = +d.relativeStunden;
-                    return d;
-                });
-
-                // Gruppieren und Summieren pro Wochentag
-                const sums = d3.rollups(
-                    data,
-                    v => d3.sum(v, d => d.relativeStunden),
-                    d => (d.datum.getDay() + 6) % 7
-                );
-                // In Array mit Wochentagsnamen und Summe
-                const barData = weekdays.map((day, i) => ({
-                    tag: day,
-                    sum: (sums.find(d => d[0] === i)?.[1]) || 0
-                }));
-
-                const x = d3.scaleBand()
-                    .domain(weekdays)
-                    .range([0, width])
-                    .padding(0.2);
-                const y = d3.scaleLinear()
-                    .domain([0, d3.max(barData, d => d.sum)])
-                    .nice()
-                    .range([height, 0]);
+                const allData = Array.from(grouped.values()).flat();
+                x.domain([0, d3.max(allData, (d, i) => i)]);
+                y.domain([0, d3.max(allData, d => dataTransform(d.latency)) * 1.2]);
 
                 g.append("g")
                     .attr("transform", `translate(0,${height})`)
-                    .call(d3.axisBottom(x));
+                    .call(d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")));
+
                 g.append("g")
                     .call(d3.axisLeft(y));
 
-                g.selectAll(".bar")
-                    .data(barData)
-                    .enter().append("rect")
-                    .attr("class", "bar")
-                    .attr("x", d => x(d.tag))
-                    .attr("y", d => y(d.sum))
-                    .attr("width", x.bandwidth())
-                    .attr("height", d => height - y(d.sum))
-                    .attr("fill", "darkorange")
-                    .on("mousemove", (event, d) => {
-                        tooltip
-                            .style("opacity", 1)
-                            .html(`Wochentag: ${d.tag}<br>Summe: ${d.sum.toFixed(2)}`)
-                            .style("left", (event.pageX + 10) + "px")
-                            .style("top", (event.pageY - 30) + "px");
-                    })
-                    .on("mouseout", () => tooltip.style("opacity", 0));
-            });
-            d3.json("/data/relative").then(raw => {
-                const data = raw.slice(1)  // 1. Eintrag ignorieren
-                    .map(d => ({
-                        datum: new Date(d.datum),
-                        relativeStunden: +d.relativeStunden
-                    }))
-                    .sort((a, b) => b.datum - a.datum) // absteigend nach Datum
+                Array.from(grouped.entries()).forEach(([qos, values], idx) => {
+                    const line = d3.line()
+                        .x((d, i) => x(i))
+                        .y(d => y(dataTransform(d.latency)));
 
-                const last14 = data.slice(0, 14);
-                const tbody = d3.select("#last14days tbody");
-                tbody.selectAll("tr").data(last14).join("tr")
-                    .html(d => `<td>${d.datum.toLocaleDateString()}</td><td>${d.relativeStunden.toFixed(2)}</td>`);
-            });
-        })();
+                    g.append("path")
+                        .datum(values)
+                        .attr("class", "line")
+                        .attr("stroke", colors(qos))
+                        .attr("d", line);
+
+                    // Durchschnittslinie
+                    const avg = d3.mean(values, d => dataTransform(d.latency));
+                    g.append("line")
+                        .attr("class", "avg-line")
+                        .attr("x1", 0)
+                        .attr("x2", width)
+                        .attr("y1", y(avg))
+                        .attr("y2", y(avg));
+
+                    g.append("text")
+                        .attr("x", width - 60)
+                        .attr("y", y(avg) - 10)
+                        .attr("fill", colors(qos))
+                        .text(`QoS ${qos} Ø ${avg.toFixed(1)} ms`);
+                });
+            }
+
+            drawChart("full-rtt", d => d);
+            drawChart("one-way", d => d / 2);
+        });
     </script>
 </body>
-
 </html>
