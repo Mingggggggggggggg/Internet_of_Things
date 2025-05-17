@@ -12,9 +12,9 @@ MQTT_PUB_LATRESPONSE = "/esp32/latencyResponse"
 MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 
 totalSend = 100
-qos = 2
+qos = 0
 sleep = 0.1
-messageSizeReal = 0 #1024 für 1kb
+messageSizeReal = 1024 #1024 für 1kb
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
@@ -44,6 +44,7 @@ def on_message(client, userdata, message):
                 print(".", end="", flush=True)
 
             except (json.JSONDecodeError, KeyError, ValueError) as e:
+                #print(f"Topic: {message.topic}, Payload: {raw_payload}")
                 print(f"Fehler beim Verarbeiten der Nachricht: {e}")
 
     except Exception as e:
