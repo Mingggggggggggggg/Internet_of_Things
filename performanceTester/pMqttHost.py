@@ -12,8 +12,8 @@ MQTT_PUB_LATRESPONSE = "/esp32/latencyResponse"
 MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 
 totalSend = 100
-qos = 0
-sleep = 0.1
+qos = 2
+sleep = 1
 messageSizeReal = 1024 #1024 für 1kb
 
 def on_connect(client, userdata, flags, rc):
@@ -40,7 +40,7 @@ def on_message(client, userdata, message):
                 dm.insert(con, datum, mqttQos, latency, message_size)
                 con.close()
                 #print(f"Eingefügt: {datum}; {latency} ms; QoS {mqttQos}; Größe {message_size}")
-                print(".", end="")
+                print("", end="")
                 print(".", end="", flush=True)
 
             except (json.JSONDecodeError, KeyError, ValueError) as e:
