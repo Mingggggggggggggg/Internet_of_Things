@@ -26,6 +26,7 @@ def initDB():
             cur.execute("""
             CREATE TABLE performanceTable (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                datum DATE,
                 timestamp BIGINT,
                 qos INTEGER,
                 latency INTEGER,
@@ -40,17 +41,17 @@ def initDB():
 
 
 
-def insert(con, timestamp, qos, latency, message):
+def insert(con, datum, timestamp, qos, latency, message):
     with con:
         cur = con.cursor()
-        cur.execute("INSERT INTO performanceTable (timestamp, qos, latency, message) VALUES (?, ?, ?, ?)", (timestamp, qos, latency, message))
+        cur.execute("INSERT INTO performanceTable (datum, timestamp, qos, latency, message) VALUES (?, ?, ?, ?)", (datum, timestamp, qos, latency, message))
 
 
 def getAllData():
     con = sqlite3.connect(filepath)
     con.row_factory = dict_factory
     cur = con.cursor()
-    cur.execute("SELECT timestamp, qos, latency, message FROM performanceTable ORDER BY datum ASC")
+    cur.execute("SELECT datum, timestamp, qos, latency, message FROM performanceTable ORDER BY datum ASC")
     data = cur.fetchall()
     con.close()
     return data
