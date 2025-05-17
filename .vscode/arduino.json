@@ -1,3 +1,4 @@
 {
-    "port": "COM3"
+    "port": "COM3",
+    "arduino.path": "C:\\Users\\Kumpelbrot\\Desktop\\Arduino"
 }
