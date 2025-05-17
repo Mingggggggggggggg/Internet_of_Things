@@ -3,6 +3,6 @@ import time
 
 
 
-timestamp = int(time.time() * 1_000_000)
+timestamp = int(time.time())
 
 print(timestamp)

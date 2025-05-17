@@ -5,12 +5,14 @@ import paho.mqtt.client as mqtt
 import json
 import sqlite3
 import pDbManager as dm
+import pInit as init
 
-MQTT_PUB_LATSEND = "/esp32/latencySend"
+MQTT_PUB_LATRESPONSE = "/esp32/latencyResponse"
 MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 
-totalSend = 5
+totalSend = 20
 qos = 0
+sleep = 1
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
@@ -25,15 +27,17 @@ def on_message(client, userdata, message):
             try:
                 payload = json.loads(raw_payload)
                 datum = payload["datum"]
-                timestamp = payload["timestamp"]
+                timestamp = int(payload["timestamp"])  # ms Timestamp vom ESP32
                 mqttQos = payload["QoS"]
-                message_text = payload["message"]
+                message_size = payload["message"]
+
+                now_ms = int(time.time() * 1000)  # aktuelle Zeit in ms
+                latency = now_ms - timestamp      # Differenz in ms
 
                 con = sqlite3.connect(dm.filepath)
-                dm.tempTable(con)  
-                dm.insert(con, datum, timestamp, mqttQos, message_text)
+                dm.insert(con, datum, mqttQos, latency, message_size)
                 con.close()
-                print(f"Eingefügt: {datum}; {timestamp}; {mqttQos}; {message_text}")
+                print(f"Eingefügt: {datum}; {latency} ms; QoS {mqttQos}; Größe {message_size}")
 
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 print(f"Fehler beim Verarbeiten der Nachricht: {e}")
@@ -44,18 +48,18 @@ def on_message(client, userdata, message):
 def sendMessage(client):
     count = totalSend
     while count > 0:
-        timestamp = time.time_ns()
+        timestamp_ms = int(time.time() * 1000)
         payload = json.dumps({
             "datum": time.strftime("%Y-%m-%d"),
-            "timestamp": timestamp,
+            "timestamp": timestamp_ms,   # jetzt in ms
             "QoS": qos,
-            "message": "test"
+            "message": ""
         })
 
-        client.publish(MQTT_PUB_LATSEND, payload=payload, qos=qos)
-        print("Nachricht gesendet.")
+        client.publish(MQTT_PUB_LATRESPONSE, payload=payload, qos=qos)
+        print(f"Nachricht gesendet:\n{payload}")
         count -= 1
-        time.sleep(5) 
+        time.sleep(sleep)
 
 def startMqttClient():
     mqttc = mqtt.Client()
@@ -68,9 +72,3 @@ def startMqttClient():
     sender_thread.start()
 
     mqttc.loop_forever()
-
-if __name__ == "__main__":
-    try:
-        startMqttClient()
-    except KeyboardInterrupt:
-        print("Beendet durch Benutzer.")
