@@ -29,7 +29,7 @@ AsyncMqttClient mqttClient;
 // Internet Uhr
 WiFiUDP ntpUDP;
 // Passe an auf GMT+1
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
 
 
 
@@ -82,54 +82,98 @@ void onMqttPublish(uint16_t packetId) {
 String getCurrentDate() {
   timeClient.update();
   time_t epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime(&epochTime);
-  
+  struct tm* ptm = gmtime(&epochTime);
+
   char dateBuffer[11];
   sprintf(dateBuffer, "%04d-%02d-%02d", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday);
   return String(dateBuffer);
 }
 
+void syncClock() {
+  timeClient.update();
+  Serial.println("NTP-Zeit synchronisiert.");
+}
 
 void sendData() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     Serial.println("Keine WiFi/MQTT-Verbindung!");
+    return;
   }
+  timestampMil = esp_timer_get_time();
 
   DynamicJsonDocument doc(128);
   doc["datum"] = getCurrentDate();
   doc["timestamp"] = timestampMil;
+  doc["qos"] = qualityOfService;
   doc["message"] = "test";
 
   String payload;
-  seriarializeJson(doc, payload);
+  serializeJson(doc, payload);
 
-  mqttClient.publish(MQTT_PUB_LATSEND, qualityOfService, false)
-
-  
-
+  mqttClient.publish(MQTT_PUB_LATSEND, qualityOfService, false, payload.c_str());
+  Serial.println(timestampMil);
+  Serial.println(qualityOfService);
+  Serial.println("Gesendet");
 }
+
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
+                   size_t len, size_t index, size_t total) {
+  if (strcmp(topic, MQTT_SUB_LATREC) != 0) return;  // Korrektes Topic prüfen
+
+  uint64_t now = esp_timer_get_time();
+
+  DynamicJsonDocument doc(128);
+  DeserializationError error = deserializeJson(doc, payload);
+  if (error) {
+    Serial.print("JSON-Fehler: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  uint64_t sent = doc["timestamp"];
+  uint64_t latency = now - sent;
+
+  DynamicJsonDocument result(128);
+  result["datum"] = getCurrentDate();
+  result["qos"] = qualityOfService;
+  result["latency_us"] = latency;
+  result["size"] = strlen(payload);
+
+  String resultPayload;
+  serializeJson(result, resultPayload);
+
+  mqttClient.publish(MQTT_PUB_LATRES, 0, false, resultPayload.c_str());  // korrektes Topic
+  Serial.printf("Latenz: %llu µs\n", latency);
+}
+
 
 void setup() {
   Serial.begin(115200);
-  
+
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000),
-                                  pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+                                    pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000),
-                                  pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-  
+                                    pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
+
   WiFi.onEvent(onWiFiEvent);
-  
+
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
   mqttClient.onPublish(onMqttPublish);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.subscribe(MQTT_SUB_LATREC, qualityOfService);
 
   connectToWifi();
 
   timeClient.begin();
   syncClock();
 }
-
+static unsigned long lastSent = 0;
 void loop() {
-
+  if (millis() - lastSent > 5000 && mqttClient.connected()) {
+    sendData();
+    lastSent = millis();
+  }
 }

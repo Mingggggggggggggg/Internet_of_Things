@@ -27,10 +27,9 @@ def initDB():
             CREATE TABLE performanceTableLatency (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 datum DATE,
-                timestamp BIGINT,
                 qos INTEGER,
                 latency INTEGER,
-                message INTEGER
+                messageSize INTEGER
             )
             """)
             con.commit()
@@ -41,8 +40,8 @@ def initDB():
 
 
 
-def insert(con, datum, timestamp, qos, latency, message):
+def insert(con, datum, qos, latency, messageSize):
     with con:
         cur = con.cursor()
-        cur.execute("INSERT INTO performanceTableLatency (datum, timestamp, qos, latency, message) VALUES (?, ?, ?, ?, ?)", (datum, timestamp, qos, latency, message))
+        cur.execute("INSERT INTO performanceTableLatency (datum,  qos, latency, messageSize) VALUES (?, ?, ?, ?, ?)", (datum, qos, latency, messageSize))
 
