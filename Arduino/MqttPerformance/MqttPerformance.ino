@@ -15,6 +15,7 @@ extern "C" {
 
 #define MQTT_PUB_LATRESPONSE "/esp32/latencyResponse"
 #define MQTT_SUB_LATMESSAGE "/esp32/latencyMessage"
+
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 AsyncMqttClient mqttClient;
