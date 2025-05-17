@@ -15,7 +15,7 @@ extern "C" {
 
 
 #define MQTT_PUB_LATSEND "/esp32/latencySend"
-#define MQTT_PUB_LATREC "/esp32/latencyReceive"
+#define MQTT_SUB_LATREC "/esp32/latencyReceive"
 #define MQTT_PUB_LATRES "/esp32/latencyResult"
 
 uint8_t qualityOfService = 0;
@@ -101,7 +101,9 @@ void generateData() {
   doc["message"] = "test";
 
   String payload;
-  seriarialize
+  seriarializeJson(doc, payload);
+
+  mqttClient(MQTT_PUB_LATSEND, qualityOfService, )
 
   
 
