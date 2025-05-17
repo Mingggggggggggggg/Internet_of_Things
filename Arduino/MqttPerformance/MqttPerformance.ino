@@ -1,4 +1,4 @@
-﻿#include <Arduino.h>
+#include <Arduino.h>
 #include <WiFi.h>
 #include "../keys.h"
 extern "C" {
@@ -12,7 +12,14 @@ extern "C" {
 
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
-#define MQTT_PUB_HOURS "/esp32/performanceTester"
+
+
+#define MQTT_PUB_LATSEND "/esp32/latencySend"
+#define MQTT_PUB_LATREC "/esp32/latencyReceive"
+#define MQTT_PUB_LATRES "/esp32/latencyResult"
+
+uint8_t qualityOfService = 0;
+uint64_t timestampMil = 0;
 
 
 TimerHandle_t mqttReconnectTimer;
@@ -24,7 +31,7 @@ WiFiUDP ntpUDP;
 // Passe an auf GMT+1
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
 
-#define char qualityOfService = 0;
+
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -83,20 +90,27 @@ String getCurrentDate() {
 }
 
 void syncClock() {
-
+  Serial.print("Synchronisiere Uhr mit NTP");
+  timeClient.update();
+  epochTimeAtSync = timeClient.getEpochTime();
+  millisAtSync = millis();
+  lastNtpSync = millis();
+  Serial.println("Synchronisiert:");
+  Serial.println(epochTimeAtSync);
+  Serial.println(millisAtSync);
 }
 
 void generateData() {
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     Serial.println("Keine WiFi/MQTT-Verbindung!");
-    break;
   }
 
   DynamicJsonDocument doc(128);
   doc["datum"] = getCurrentDate();
-  doc["timestamp"] = millis();
-  doc["qos"] = qualityOfService;
-  doc["message"] = NULL;
+  doc["timestamp"] = timestampMil;
+  doc["message"] = "test";
+
+  
 
 }
 
@@ -118,14 +132,9 @@ void setup() {
   connectToWifi();
 
   timeClient.begin();
+  syncClock();
 }
 
 void loop() {
-  static unsigned long lastUpdate = 0;
-  const unsigned long interval = 1000; // 5 Minuten (Steam API Ratelimit)
 
-  if (millis() - lastUpdate >= interval) {
-    getHours();
-    lastUpdate = millis();
-  }
 }
