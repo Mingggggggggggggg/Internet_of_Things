@@ -72,14 +72,17 @@ void onMqttPublish(uint16_t packetId) {
 
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties,
                    size_t len, size_t index, size_t total) {
-  if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return; 
-  Serial.printf("Empfangenes Ping: %s\n", payload);
+  if (strcmp(topic, MQTT_PUB_LATRESPONSE) != 0) return;
 
-  // Payload einfach als Echo zurückschicken
-  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, payload);
+  // Sicherstellen, dass payload als String genutzt wird:
+  std::string msg(payload, len);
+  Serial.printf("Empfangenes Ping: %s\n", msg.c_str());
+
+  // Echo zurückschicken mit korrekter Länge
+  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, msg.c_str(), msg.length());
   Serial.println("Echo zurückgeschickt");
-
 }
+
 
 
 void setup() {
