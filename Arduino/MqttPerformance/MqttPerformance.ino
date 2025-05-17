@@ -136,7 +136,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   DynamicJsonDocument result(128);
   result["datum"] = getCurrentDate();
   result["qos"] = qualityOfService;
-  result["latency_us"] = latency;
+  result["latency"] = latency;
   result["size"] = strlen(payload);
 
   String resultPayload;

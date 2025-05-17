@@ -12,6 +12,7 @@ MQTT_PUB_LATRES = "/esp32/latencyResult"
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(MQTT_PUB_LATSEND)
+    client.subscribe(MQTT_PUB_LATRES)
 
 # Übernommen aus Laborübung 12
 # Bei Ankunft der Nachricht bereinige die Json und und schicke an den DbManager zum einfügen
@@ -25,10 +26,10 @@ def onLatencyMessage(client, userdata, message):
                 payload = json.loads(raw_payload)
                 datum = payload["datum"]
                 timestamp = int(payload["timestamp"])
-                qos = short(payload["qos"])
+                qos = int(payload["qos"])
 
 
-                print(f"Eingefügt: {datum} ; {stunden} h")
+                print(f"Eingefügt: {datum}")
 
                 # Echo für den ESP32 senden (für RTT-Berechnung)
                 client.publish(MQTT_SUB_LATREC, raw_payload)
@@ -48,14 +49,15 @@ def onLatencyResult(client, userdata, message):
             try:
                 payload = json.loads(raw_payload)
                 datum = payload["datum"]
-                timestamp = int(payload["timestamp"])
-                qos = short(payload["qos"])
+                latency = int(payload["latency"])
+                qos = int(payload["qos"])
+                size = payload["size"]
 
 
-                print(f"Eingefügt: {datum} ; {stunden} h")
-
-                # Echo für den ESP32 senden (für RTT-Berechnung)
-                client.publish(MQTT_SUB_LATREC, raw_payload)
+            con = sqlite3.connect(dm.filepath)
+            dm.tempTable(con)  
+            dm.insert(con, datum, latency, qos, size)
+            con.close()
 
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 print(f"Fehler beim Verarbeiten der Nachricht: {e}")

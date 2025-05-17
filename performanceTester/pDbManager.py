@@ -43,5 +43,5 @@ def initDB():
 def insert(con, datum, qos, latency, messageSize):
     with con:
         cur = con.cursor()
-        cur.execute("INSERT INTO performanceTableLatency (datum,  qos, latency, messageSize) VALUES (?, ?, ?, ?, ?)", (datum, qos, latency, messageSize))
+        cur.execute("INSERT INTO performanceTableLatency (datum,  qos, latency, messageSize) VALUES (?, ?, ?, ?)", (datum, qos, latency, messageSize))
 
