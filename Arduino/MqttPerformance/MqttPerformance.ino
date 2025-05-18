@@ -9,7 +9,7 @@ extern "C" {
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 
-#define MQTT_HOST IPAddress(192, 168, 178, 124)
+#define MQTT_HOST IPAddress(192, 168, 178, 132)
 #define MQTT_PORT 1883
 
 
