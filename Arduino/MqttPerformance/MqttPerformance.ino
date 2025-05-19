@@ -79,7 +79,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   Serial.printf("Empfangenes Ping: %s\n", msg.c_str());
 
   // Echo zurückschicken mit korrekter Länge
-  mqttClient.publish(MQTT_SUB_LATMESSAGE, 0, false, msg.c_str(), msg.length());
+  mqttClient.publish(MQTT_SUB_LATMESSAGE, properties.qos, false, msg.c_str(), msg.length());
   Serial.println("Echo zurückgeschickt");
 }
 
