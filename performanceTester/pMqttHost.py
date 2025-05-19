@@ -6,13 +6,12 @@ import paho.mqtt.client as mqtt
 import json
 import sqlite3
 import pDbManager as dm
-import pInit as init
 
 MQTT_PUB_LATRESPONSE = "/esp32/latencyResponse"
 MQTT_SUB_LATMESSAGE = "/esp32/latencyMessage"
 
 totalSend = 100
-qos = 0
+qos = 2
 sleep = 1
 messageSizeReal = 0 #1024 für 1kb
 
@@ -68,6 +67,7 @@ def sendMessage(client):
         time.sleep(sleep)
     if count==0:
         print("Fertig")
+        exit()
 
 def startMqttClient():
     mqttc = mqtt.Client()
