@@ -13,7 +13,6 @@ extern "C" {
 #define MQTT_HOST IPAddress(192, 168, 178, 124)
 #define MQTT_PORT 1883
 #define MQTT_PUB_HOURS "/esp32/Lost_Ark/hours"
-#define LOST_ARK_APPID 1599340
 
 
 TimerHandle_t mqttReconnectTimer;
@@ -22,8 +21,8 @@ AsyncMqttClient mqttClient;
 
 // Internet Uhr
 WiFiUDP ntpUDP;
-// Passe an auf GMT+1
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000); 
+// Passe an auf GMT+2
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 7200, 60000); 
 
 
 
@@ -115,7 +114,7 @@ void getHours() {
     if (doc["response"].containsKey("games")) {
       JsonArray games = doc["response"]["games"];
       for (JsonObject game : games) {
-        if (game["appid"] == LOST_ARK_APPID) {
+        if (game["appid"] == GAME_ID_LOST_ARK) {
           int playtimeMinutes = game["playtime_forever"];
           float playtimeHours = playtimeMinutes / 60.0f;
           String currentDate = getCurrentDate(); 
@@ -129,7 +128,8 @@ void getHours() {
           String mqttPayload;
           serializeJson(mqttDoc, mqttPayload);
 
-          // MQTT-Nachricht senden
+          // MQTT-Nachricht senden; QoS 1, damit sichergestellt wird, dass der Broker die Nachricht erhält
+          // Retain flag = true, im endeffekt, dasselbe wie Ersetzen des älteren Eintrages in der SQLite DB, hier überflüssig
           mqttClient.publish(MQTT_PUB_HOURS, 1, true, mqttPayload.c_str());
 
           Serial.printf("Lost Ark Spielstunden: %.1f h (Datum: %s)\n", playtimeHours, currentDate.c_str());
