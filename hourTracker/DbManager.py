@@ -4,7 +4,7 @@ from datetime import datetime
 import csv
 
 filepath = "./dataset.db"
-csvPath = "/home/admin/Desktop/Internet_of_Things/hourTracker/Datensatz/Lost Ark Shamewall bereinigt - Tabellenblatt1.csv"
+csvPath = "hourTracker/Datensatz/Lost Ark Shamewall - bereinigt - Tabellenblatt1.csv"
 
 
 # Übernommen aus Laborübung 12
