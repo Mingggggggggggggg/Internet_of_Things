@@ -1,11 +1,11 @@
 #include <WiFi.h>
-#include "../keys.h"
+#include "..\keys.h"
 
 
 
 void setup() {
   Serial.begin(115200);
-  WiFi.begin(SSID, PASS);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
