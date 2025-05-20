@@ -129,7 +129,7 @@ void getHours() {
           serializeJson(mqttDoc, mqttPayload);
 
           // MQTT-Nachricht senden; QoS 1, damit sichergestellt wird, dass der Broker die Nachricht erhält
-          // Retain flag = true, im endeffekt, dasselbe wie Ersetzen des älteren Eintrages in der SQLite DB, hier überflüssig
+          // Retain flag = true, im endeffekt, dasselbe wie Ersetzen des älteren Eintrages in der SQLite DB
           mqttClient.publish(MQTT_PUB_HOURS, 1, true, mqttPayload.c_str());
 
           Serial.printf("Lost Ark Spielstunden: %.1f h (Datum: %s)\n", playtimeHours, currentDate.c_str());
