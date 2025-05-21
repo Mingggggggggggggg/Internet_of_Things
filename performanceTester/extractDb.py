@@ -33,8 +33,7 @@ def export_latencies_per_database():
                 
                 # Header schreiben
                 csv_writer.writerow([
-                    'ID', 'Datum', 'QoS', 
-                    'Latenz (ms)', 'Nachrichtengröße (Bytes)'
+                    'ID', 'Datum', 'QoS', 'Latenz (ms)', 'Nachrichtengröße (Bytes)'
                 ])
                 
                 # Daten schreiben
