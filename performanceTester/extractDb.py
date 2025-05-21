@@ -5,7 +5,7 @@ from glob import glob
 
 # Konfiguration
 RESULTS_DIR = "performanceTester/results"
-OUTPUT_DIR = "csv_exports"  # Ordner für die CSV-Dateien
+OUTPUT_DIR = "csv_exports"  
 
 def export_latencies_per_database():
     # Sicherstellen, dass der Output-Ordner existiert

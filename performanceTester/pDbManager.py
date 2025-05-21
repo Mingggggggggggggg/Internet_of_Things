@@ -12,26 +12,29 @@ def dict_factory(cursor, row):
 
 
 
-       
-def initDB():
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
+def initDB(createNew: bool):
     con = sqlite3.connect(filepath)
     con.row_factory = dict_factory
-    with con:
-        cur = con.cursor()
-        cur.execute("DROP TABLE IF EXISTS performanceTableLatency")
-        cur.execute("""
-        CREATE TABLE performanceTableLatency (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datum DATE,
-            qos INTEGER,
-            latency INTEGER,
-            messageSize INTEGER
-        )
-        """)
-        con.commit()
+
+    if createNew:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        con = sqlite3.connect(filepath)
+        con.row_factory = dict_factory
+        with con:
+            cur = con.cursor()
+            cur.execute("DROP TABLE IF EXISTS performanceTableLatency")
+            cur.execute("""
+                CREATE TABLE performanceTableLatency (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    datum DATE,
+                    qos INTEGER,
+                    latency INTEGER,
+                    messageSize INTEGER
+                )
+            """)
+            con.commit()
+
     return con
 
 
