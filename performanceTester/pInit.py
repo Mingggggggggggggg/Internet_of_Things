@@ -1,14 +1,21 @@
 import pDbManager as dm
 import pMqttHost as mH
+#import pWebServer as wS
+#import threading
 
 def main():
-    #initDB nimmt boolean als Parameter an. Ist es auf true gesetzt, dann wird die Datenbank
-    #neu erstellt und mit dem Grundbestand befüllt. Ist diese auf false gesetzt, wird bloß con wiedergegeben
-    dm.initDB(false)
 
-    #Starte MQTTClient
+    dm.initDB()
+
+    # Threade MqttClient, um ungewollte Latenzen zu vermeiden (Nur wenn webserver aktiv ist)
+    #mqtt_thread = threading.Thread(target=mH.startMqttClient, daemon=True)
+    #mqtt_thread.start()
+
     mH.startMqttClient()
 
+
+    #Deaktiviere webServer, um Overhead zu reduzieren. Visualisierungen werden manuell angelegt
+    #wS.startServer() 
 
 if __name__ == "__main__":
     main()
