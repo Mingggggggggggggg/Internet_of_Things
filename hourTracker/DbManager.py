@@ -2,7 +2,6 @@ import sqlite3
 import os
 from datetime import datetime
 import csv
-import time
 
 filepath = "./dataset.db"
 csvPath = "hourTracker/Datensatz/Lost Ark Shamewall - bereinigt - Tabellenblatt1.csv"
