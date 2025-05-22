@@ -2,6 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 import csv
+import time
 
 filepath = "./dataset.db"
 csvPath = "hourTracker/Datensatz/Lost Ark Shamewall - bereinigt - Tabellenblatt1.csv"
@@ -35,28 +36,33 @@ def readCsv(con, csvPath):
 
 # Übernommen aus Laborübung 12 connect:with()   
 # Stelle eine Verbindung zur Datenbank her, existiert keine Datenbank, wird diese erstellt und gefüllt               
-def initDB():
-    if not os.path.exists(filepath):
-        con = sqlite3.connect(filepath)
-        con.row_factory = dict_factory
-        with con:
-            cur = con.cursor()
-            cur.execute("""
-            DROP TABLE IF EXISTS lostarkshamewall
-            """)
-            cur.execute("""
-            CREATE TABLE lostarkshamewall (
-                datum DATE PRIMARY KEY,
-                stunden NUMERIC,
-                relativeStunden NUMERIC
-            )
-            """)
-            con.commit()
-            tempTable(con)
-            readCsv(con, csvPath)
+def initDB(createNew: bool):
+    con = sqlite3.connect(filepath)
+    con.row_factory = dict_factory
+
+    if createNew or not os.path.exists(filepath):
+        if os.path.exists(filepath):
+            os.remove(filepath)
     else:
-        con = sqlite3.connect(filepath)
-        con.row_factory = dict_factory
+        return con
+    con = sqlite3.connect(filepath)
+    con.row_factory = dict_factory
+    with con:
+        cur = con.cursor()
+        cur.execute("""
+        DROP TABLE IF EXISTS lostarkshamewall
+        """)
+        cur.execute("""
+        CREATE TABLE lostarkshamewall (
+            datum DATE PRIMARY KEY,
+            stunden NUMERIC,
+            relativeStunden NUMERIC
+        )
+        """)
+        con.commit()
+        tempTable(con)
+        readCsv(con, csvPath)
+
     return con
 
 # Erstellt eine temporäre Tabelle, damit nur die aktuellsten Stunden pro Tag in der Datenbank sind (Datum ist primary key)
