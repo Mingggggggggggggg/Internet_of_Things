@@ -4,8 +4,10 @@ import webServer as wS
 import threading
 
 def main():
-    #Zum aktualisieren des Datensatzes folgende Zeile auskommentieren, dataset.db löschen und ggf. Pfad in DbManager ergänzen
-    #con = dm.initDB()
+    #initDB nimmt boolean als Parameter an. Ist es auf true gesetzt, dann wird die Datenbank
+    #neu erstellt und mit dem Grundbestand befüllt. Ist diese auf false gesetzt, wird bloß con wiedergegeben.
+    #Existiert keine Datenbank, dann wird eine neue erstellt und mit dem Grundbestand befüllt.
+    dm.initDB(False)
 
     mqtt_thread = threading.Thread(target=mH.startMqttClient, daemon=True)
     mqtt_thread.start()
